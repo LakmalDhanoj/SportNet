@@ -1,92 +1,67 @@
 # Software Requirement Specification (SRS) - SportNet
 
 ## 1. Introduction
-
 ### 1.1 Purpose
-This document provides the definitive technical and functional requirements for **SportNet**, a robust sports management system. It details the data structures, user hierarchies, and implementation strategy for building a high-performance tracking platform.
+This document defines the functional and technical requirements for **SportNet**, a hierarchical sports management platform.
 
 ### 1.2 Scope
-SportNet manages the end-to-end lifecycle of sports administration. This includes detailed athlete profiling, leadership assessment, coaching effectiveness, managerial oversight, and game-day logistics.
+SportNet facilitates sports administration and performance tracking through a tiered hierarchy:
+**Sports Director > Sport Manager > Coach > Captain > Player.**
 
 ---
 
-## 2. System Hierarchy & Roles
-
-The system follows a strict hierarchical access model:
-1.  **Sports Director:** Ultimate oversight, strategic planning, and global analytics.
-2.  **Sport Manager:** Administrative coordination, event organization, and resource management.
-3.  **Coach:** Technical training, performance evaluation, and field-level discipline.
-4.  **Captain:** Team leadership, match strategy, and motivation.
-5.  **Player:** Participation and performance tracking.
+## 2. Updated Organizational Hierarchy & Logic
+The system's primary innovation is its "Nested Management" model for performance evaluation:
+1.  **Coach-to-Captain Oversight:** The Coach is responsible for logging and managing the `Attendance`, `Discipline`, and `Evaluation Reports` for all **Captains** under their sport category.
+2.  **Captain-to-Player Oversight:** The Captain acts as a junior administrator, responsible for logging `Attendance`, `Discipline`, and `Daily Reports` for the **normal Players** in their specific team.
+3.  **Managerial Review:** The Sport Manager and Sports Director review the aggregated data from both tiers to ensure evaluation consistency.
 
 ---
 
-## 3. Functional Requirements: Data Entities
+## 3. System Features (Updated)
 
-The system must support the following specific data fields for each entity:
+### 3.1 Role-Based Performance Management
+* **REQ-PM-01 (Coach Management):** The Coach Dashboard shall include a "Leadership Management" module to evaluate Captains on:
+    * Attendance and Punctuality.
+    * Leadership Discipline.
+    * Responsibility and Strategy Reports.
+* **REQ-PM-02 (Captain Management):** The Captain Dashboard shall include a "Squad Management" module allowing them to:
+    * Mark daily attendance for normal players.
+    * Rate player discipline (1-10).
+    * Submit weekly player progress reports to the Coach.
+* **REQ-PM-03 (Data Flow):** Performance data entered by Captains must be visible to the Coach for "Verification" before being finalized in the database.
 
-### 3.1 Player Management
-* **Identity:** Reg.no (PK), Name, Gender, Age.
-* **Role/Team:** Sport Category, Team/Group, Position (e.g., Forward), Role (Player/Captain).
-* **Performance:** Attendance, Discipline, Time Management, Performance Rating, Skill Level.
-* **Stats:** Matches Played/Won/Lost, Weekly Match Points, Total Score, Rank, Coach Evaluation.
-* **Status:** Fitness Level, Injury Status, Experience (Working Year).
-
-### 3.2 Captain Management
-* **Leadership Attributes:** Leadership Skill Rating, Decision-Making, Team Motivation Level.
-* **Captain Stats:** Matches Led, Win Rate (%), Tournament Results.
-* **Strategy:** Game Strategy Rating, Adaptability, Planning Ability.
-* **Responsibility:** Responsibility Score, Player Feedback Rating.
-
-### 3.3 Coach Management
-* **Professionalism:** Coach ID, Qualification/Certification, Coaching Level (Beginner to Professional).
-* **Team Ops:** Teams Assigned, Player Count, Captain Coordination Ability.
-* **Coaching Results:** Win Percentage, Training Effectiveness Rating, Strategy Development.
-* **Admin:** Improvement Score, Specializations (e.g., Fitness, Strategy).
-
-### 3.4 Sport Manager Management
-* **Administration:** Manager ID, Budget Management, Resource Allocation, Facility/Equipment Management.
-* **Coordination:** Event/Tournament Organization, Scheduling Responsibility.
-* **Monitoring:** Team Performance Tracking, Coach Performance Evaluation, Success Rate.
-* **Skills:** Problem-Solving Ability, Planning & Organization Skill.
-
-### 3.5 Game & Match Records
-* **Event Info:** Game ID, Category (Football, etc.), Type (Indoor/Outdoor), Tournament Name, Venue.
-* **Participants:** Teams Involved, Player List, Captain/Coach Assignment.
-* **Results:** Winner/Runner-up, Score/Result, Match Duration, Points Awarded.
-* **In-Game Stats:** Fouls/Penalties, Possession, MVP Awards, Injuries Reported.
+### 3.2 Automated Evaluation Logic
+* **REQ-LOGIC-01:** The system shall aggregate "Captain-generated reports" to build a player's `Total Score`.
+* **REQ-LOGIC-02:** The Coach’s evaluation of a Captain shall contribute 60% to the Captain's `Total Score`, with the remaining 40% derived from team performance metrics.
 
 ---
 
-## 4. Technical Requirements (Implementation Plan)
+## 4. Functional Requirements & Entity Attributes
 
-### 4.1 Technology Stack
-* **Backend:** Express.js (Node.js)
-* **Frontend:** React.js with Tailwind CSS (Glassmorphism/Dark Theme)
-* **Database:** MySQL (Relational)
-* **Icons/UI:** Lucide-React for iconography.
+### 4.1 Modified Database Relationships
+* **Players Table:** Includes a `managed_by_captain_id` (FK) to link players to their evaluating Captain.
+* **Captains Table:** Includes a `managed_by_coach_id` (FK) to link captains to their evaluating Coach.
 
-### 4.2 Database Design Strategy
-* **Normalization:** Maintain distinct tables for `Users`, `Games`, and `Performance_Logs`.
-* **Indexing:** Use Primary Keys (reg_no, coach_id, manager_id) for rapid lookup.
-* **Relationships:** Implement Foreign Keys to link Players to Games and Managers to Coaches/Captains as defined in the ER model.
-
-### 4.3 Security & Access Control
-* **Authentication:** JWT (JSON Web Tokens) for secure API communication.
-* **Authorization:** Middleware to restrict "Edit" permissions to Coaches and Managers only.
-* **Data Integrity:** Prevent Players from modifying their own `Discipline` or `Attendance` scores.
+### 4.2 Entity Attributes (Performance Focus)
+| Role | Managed By | Responsible For Managing |
+| :--- | :--- | :--- |
+| **Player** | Captain | N/A (Participant) |
+| **Captain** | Coach | Normal Players' Discipline & Attendance |
+| **Coach** | Manager | Captains' Discipline, Attendance & Reports |
 
 ---
 
-## 5. Non-Functional Requirements
+## 5. User Interface Requirements
 
-### 5.1 User Experience
-* **Responsive Design:** Dashboards must be accessible on mobile devices for on-field logging by Coaches.
-* **Visual Feedback:** Use progress bars and radar charts to display "Skill Levels" and "Leadership Ratings."
+### 5.1 Dashboard Updates
+* **Captain Dashboard:** Must feature a "My Team" tab containing a grid of players with input fields for Attendance and Discipline ratings.
+* **Coach Dashboard:** Must feature a "Leadership" tab to manage Captains and a "Review" tab to see the attendance data Captains have submitted for their players.
+* **Director Dashboard:** High-level view of how many reports have been submitted by Captains vs. verified by Coaches.
 
-### 5.2 Performance
-* **Concurrency:** The system must handle simultaneous data entry during multi-game tournaments.
-* **Audit Trail:** Log all changes to `Total Score` or `Penalty Points` for transparency.
+---
 
-### 5.3 Maintainability
-* **Modular Views:** Dynamic dashboard layouts that render components based on the `user_role` variable.
+## 6. Business Logic Validation
+* **Rule 1:** A Captain cannot edit their own attendance; only their assigned Coach has this permission.
+* **Rule 2:** A Coach can override a Captain’s entry for a Player if a discrepancy is identified.
+* **Rule 3:** Reports submitted by Captains are marked as "Pending" until a Coach reviews and clicks "Final Approved."
