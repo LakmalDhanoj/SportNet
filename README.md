@@ -1,132 +1,81 @@
-# SportNet
+# 🏆 SportNet — Hierarchical Sport Management System
 
-A full-stack web application for sports management and tracking. SportNet provides a platform for managing sports leagues, teams, players, and match scheduling with a modern React frontend and Node.js Express backend.
+SportNet is a powerful, full-stack hierarchical sports management platform designed for structured administration and performance tracking.
 
-## 🏗️ Project Structure
+## 🏗️ Organizational Hierarchy
+The system operates on a "Nested Management" model to ensure accountability and data integrity:
+**Sports Director > Sport Manager > Coach > Captain > Player**
 
-```
-SportNet/
-├── backend/                 # Node.js Express backend
-│   ├── index.js            # Main server file
-│   ├── package.json        # Backend dependencies
-│   └── node_modules/       # Backend packages
-├── frontend/frontend/      # React + Vite frontend
-│   ├── src/               # React source code
-│   │   ├── App.jsx        # Main app component
-│   │   ├── main.jsx       # App entry point
-│   │   └── assets/        # Static assets
-│   ├── package.json       # Frontend dependencies
-│   └── vite.config.js     # Vite configuration
-└── docs/                  # Documentation
-    └── dev-log.md         # Development log (gitignored)
-```
+- **Sports Director**: High-level organizational oversight and system auditing.
+- **Sport Manager**: Personnel monitoring and resource allocation.
+- **Coach**: Evaluating Captains and reviewing/finalizing player records.
+- **Captain**: Squad-level management, logging attendance/discipline for players.
+- **Player**: Personal performance tracking and progress reporting.
 
 ## 🚀 Features
 
-### Current Implementation Status
-- ✅ **Backend**: Express server running on port 5000
-- ✅ **Frontend**: React + Vite setup with modern tooling
-- ✅ **Development Environment**: ESLint, Vite HMR, nodemon
-- ❌ **API Endpoints**: Basic server setup only (pending implementation)
-- ❌ **Database**: No database integration (pending implementation)
-- ❌ **Authentication**: No user authentication (pending implementation)
-- ❌ **Sports Management**: Core features not yet implemented
+### Core Management
+- **Role-Based Dashboards**: 6 distinct user experiences tailored to specific permissions.
+- **User Management**: Admin-level control over the organizational hierarchy.
+- **Performance Evaluation**: Detailed metrics including Attendance, Discipline, Strategy, and Training Hours.
 
-### Planned Features
-- 📊 League and team management
-- 👥 Player registration and profiles
-- 📅 Match scheduling and results
-- 📈 Statistics and analytics
-- 🔐 User authentication and authorization
-- 📱 Responsive design for mobile devices
+### Workflow Logic
+- **Captain Submission**: Captains mark daily logs for their squad (Draft Mode).
+- **Coach Verification**: Coaches review submissions, can override values, and provide feedback.
+- **Locking Records**: Once a Coach clicks "Final Approved," records are locked and visible to Managers/Directors.
+- **Automated Scoring**: Total scores are calculated based on weighted metrics and Coach evaluations.
+
+### Premium UI/UX
+- **Glassmorphism**: Modern aesthetic with blur effects and translucent panels.
+- **Dark Mode**: High-contrast, easy-on-the-eyes interface with vibrant accents.
+- **Responsive**: Fully functional across desktop and mobile browsers.
 
 ## 🛠️ Technology Stack
-
-### Frontend
-- **React 19.2.6** - UI library
-- **Vite 8.0.12** - Build tool and development server
-- **ESLint** - Code linting and style enforcement
-- **CSS** - Styling with modern CSS practices
-
-### Backend
-- **Node.js** - Runtime environment
-- **Express 5.2.1** - Web framework
-- **nodemon** - Development server with auto-reload
+- **Frontend**: React 19 (Vite), Axios, React Router.
+- **Backend**: Node.js, Express, JWT Authentication.
+- **Database**: MySQL with relational integrity.
+- **Styling**: Vanilla CSS with modern utilities and animations.
 
 ## 📦 Installation
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn package manager
+- Node.js (v18+)
+- MySQL Server
 
 ### Setup Instructions
 
-1. **Clone the repository**
+1. **Database Setup**
+   - Run the [backend/schema.sql](backend/schema.sql) file in your MySQL environment:
    ```bash
-   git clone <repository-url>
-   cd SportNet
+   mysql -u root -p < backend/schema.sql
    ```
 
-2. **Install backend dependencies**
+2. **Backend Configuration**
    ```bash
    cd backend
    npm install
+   cp .env.example .env
+   # Update .env with your DB credentials
+   npm run dev
    ```
 
-3. **Install frontend dependencies**
+3. **Frontend Setup**
    ```bash
-   cd frontend/frontend
+   cd frontend
    npm install
-   ```
-
-4. **Start the backend server**
-   ```bash
-   cd backend
    npm run dev
    ```
-   Backend will run on http://localhost:5000
 
-5. **Start the frontend development server**
-   ```bash
-   cd frontend/frontend
-   npm run dev
-   ```
-   Frontend will run on http://localhost:5173
-
-## 🧪 Development
-
-### Running in Development Mode
-- **Backend**: `npm run dev` (includes auto-reload with nodemon)
-- **Frontend**: `npm run dev` (Vite with HMR)
-
-### Build Commands
-- **Frontend Build**: `npm run build`
-- **Frontend Lint**: `npm run lint`
-
-### Project Status
-This project is in the initial development phase. The basic structure is set up, but core sports management features need to be implemented.
-
-## 📝 Development Log
-
-See [docs/dev-log.md](docs/dev-log.md) for detailed development notes and changes tracking.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Update the development log
-5. Submit a pull request
-
-## 📄 License
-
-ISC License - see [LICENSE](LICENSE) file for details.
-
-## 📞 Contact
-
-For questions or contributions, please open an issue in the repository or contact the development team.
+## 🔐 Credentials (Seed Data)
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Admin** | admin@sportnet.com | sportnet123 |
+| **Director** | director@sportnet.com | sportnet123 |
+| **Manager** | manager@sportnet.com | sportnet123 |
+| **Coach** | coach1@sportnet.com | sportnet123 |
+| **Captain** | captain1@sportnet.com | sportnet123 |
+| **Player** | player1@sportnet.com | sportnet123 |
 
 ---
-
-**Last Updated**: 2026-05-14
-**Version**: 0.1.0 - Initial Setup
+**Last Updated**: 2026-05-16
+**Version**: 1.0.0 — Full Hierarchical Release
