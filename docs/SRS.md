@@ -65,3 +65,72 @@ The system's primary innovation is its "Nested Management" model for performance
 * **Rule 1:** A Captain cannot edit their own attendance; only their assigned Coach has this permission.
 * **Rule 2:** A Coach can override a Captain’s entry for a Player if a discrepancy is identified.
 * **Rule 3:** Reports submitted by Captains are marked as "Pending" until a Coach reviews and clicks "Final Approved."
+
+                                    +------------------+
+                                    |      USERS      |
+                                    +------------------+
+                                    | PK user_id       |
+                                    | email            |
+                                    | password_hash    |
+                                    | role             |
+                                    +------------------+
+                                              |
+        -----------------------------------------------------------------------------------
+        |                    |                    |                    |                  |
+        |                    |                    |                    |                  |
+        v                    v                    v                    v                  v
+
++----------------+   +----------------+   +----------------+   +----------------+   +----------------+
+| SPORTS_DIRECTOR|   | SPORT_MANAGER |   |     COACH      |   |    CAPTAIN     |   |     PLAYER     |
++----------------+   +----------------+   +----------------+   +----------------+   +----------------+
+| PK director_id |   | PK manager_id |   | PK coach_id    |   | PK captain_id  |   | PK player_id   |
+| FK user_id     |   | FK user_id    |   | FK user_id     |   | FK user_id     |   | FK user_id     |
+| name           |   | FK director_id|   | FK manager_id  |   | FK coach_id    |   | FK captain_id  |
+| gender         |   | name          |   | name           |   | name           |   | name           |
+| age            |   | gender        |   | gender         |   | gender         |   | gender         |
++----------------+   | age           |   | age            |   | age            |   | age            |
+                     | qualification |   | qualification  |   | leadership_rt  |   | attendance     |
+                     | leadership_rt |   | attendance     |   | motivation_lvl |   | discipline     |
+                     +----------------+   | discipline     |   | strategy_rt    |   | total_score    |
+                                          | evaluation_sc  |   | total_score    |   | skill_level    |
+                                          +----------------+   +----------------+   +----------------+
+
+                                                     |
+                                                     |
+                                                     v
+
+                                         +----------------------+
+                                         |        GAME          |
+                                         +----------------------+
+                                         | PK game_id           |
+                                         | game_name            |
+                                         | sport_category       |
+                                         | game_type            |
+                                         | venue                |
+                                         | date                 |
+                                         | time                 |
+                                         | season               |
+                                         | tournament_name      |
+                                         | winner_team          |
+                                         | score_result         |
+                                         +----------------------+
+
+         SPORTS_DIRECTOR
+        │ 1
+        │
+        └───────────────< manages >─────────────── M SPORT_MANAGER
+
+SPORT_MANAGER
+        │ 1
+        │
+        └───────────────< supervises >─────────── M COACH
+
+COACH
+        │ 1
+        │
+        └───────────────< manages >────────────── M CAPTAIN
+
+CAPTAIN
+        │ 1
+        │
+        └───────────────< leads >──────────────── M PLAYER                                
