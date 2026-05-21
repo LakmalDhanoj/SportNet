@@ -170,7 +170,7 @@ exports.getAllPlayers = async (req, res) => {
     try {
         const [players] = await db.query(
             `SELECT p.player_id, p.name, p.gender, p.age, p.skill_level,
-                    p.discipline, p.total_score,
+                    p.discipline, p.total_score, p.approval_status,
                     c.name AS captain_name
              FROM player p
              LEFT JOIN captain c ON c.captain_id = p.managed_by_captain_id`
@@ -242,3 +242,102 @@ exports.getAuditLogs = async (req, res) => {
     }
 };
 
+// ── New player registration/approval endpoints ────────────────────────────────
+
+exports.getPendingPlayers = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+        
+        const [players] = await db.query(
+            "SELECT player_id, name, gender, age, approval_status FROM player WHERE approval_status = 'Pending'"
+        );
+        res.json({ players });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.approvePlayer = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+        
+        const { id } = req.params;
+        const { captain_id } = req.body;
+        
+        if (!captain_id) return res.status(400).json({ message: 'Captain ID is required to approve a player' });
+        
+        await db.query(
+            "UPDATE player SET approval_status = 'Approved', managed_by_captain_id = ? WHERE player_id = ?",
+            [captain_id, id]
+        );
+        res.json({ message: 'Player approved and assigned to captain' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.coachAddPlayer = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+        
+        const { email, password, name, gender, age, captain_id } = req.body;
+        if (!email || !password || !name || !captain_id) {
+            return res.status(400).json({ message: 'Email, password, name, and captain ID are required' });
+        }
+        
+        const passwordHash = await bcrypt.hash(password, 10);
+        
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+            const [userResult] = await connection.query(
+                'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
+                [email, passwordHash, 'player']
+            );
+            
+            await connection.query(
+                "INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, approval_status) VALUES (?, ?, ?, ?, ?, 'Approved')",
+                [userResult.insertId, captain_id, name, gender || null, age || null]
+            );
+            await connection.commit();
+            res.status(201).json({ message: 'Player added successfully' });
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'Email already exists' });
+        }
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.getMyTeammates = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'player') return res.status(403).json({ message: 'Forbidden' });
+        
+        const [playerRows] = await db.query('SELECT managed_by_captain_id FROM player WHERE user_id = ?', [user_id]);
+        if (!playerRows.length || !playerRows[0].managed_by_captain_id) {
+            return res.json({ teammates: [] });
+        }
+        
+        const [teammates] = await db.query(
+            "SELECT player_id, name, position, skill_level FROM player WHERE managed_by_captain_id = ? AND user_id != ?",
+            [playerRows[0].managed_by_captain_id, user_id]
+        );
+        res.json({ teammates });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};

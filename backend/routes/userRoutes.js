@@ -17,6 +17,12 @@ router.get('/all-coaches', protect, uc.getAllCoaches);
 router.get('/all-captains', protect, uc.getAllCaptains);
 router.get('/all-players', protect, uc.getAllPlayers);
 
+// ── New coach/player endpoints ────────────────────────────────────────────────
+router.get('/coach/pending-players', protect, uc.getPendingPlayers);
+router.put('/coach/approve-player/:id', protect, uc.approvePlayer);
+router.post('/coach/add-player', protect, uc.coachAddPlayer);
+router.get('/player/my-teammates', protect, uc.getMyTeammates);
+
 // ── Dropdown lists ────────────────────────────────────────────────────────────
 router.get('/list/directors', protect, uc.getDirectorList);
 router.get('/list/managers', protect, uc.getManagerList);

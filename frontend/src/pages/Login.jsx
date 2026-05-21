@@ -143,6 +143,8 @@ const Login = () => {
                     <div className="login-footer" style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '16px', fontWeight: 600 }}>
                         <a href="#" onClick={(e) => { e.preventDefault(); setForgotModalOpen(true); }} style={{ color: 'inherit', textDecoration: 'none' }}>FORGOT KEY</a>
                         <span style={{ opacity: 0.3 }}>|</span>
+                        <a href="/register" style={{ color: 'inherit', textDecoration: 'none' }}>REGISTER AS PLAYER</a>
+                        <span style={{ opacity: 0.3 }}>|</span>
                         <a href="#" onClick={(e) => { e.preventDefault(); setHelpModalOpen(true); }} style={{ color: 'inherit', textDecoration: 'none' }}>SECURE HELP</a>
                     </div>
                 </form>

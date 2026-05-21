@@ -2,6 +2,45 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
+exports.registerPlayer = async (req, res) => {
+    try {
+        const { email, password, name, gender, age } = req.body;
+        if (!email || !password || !name) {
+            return res.status(400).json({ message: 'Email, password, and name are required' });
+        }
+
+        const [existing] = await db.query('SELECT user_id FROM users WHERE email = ?', [email]);
+        if (existing.length > 0) {
+            return res.status(409).json({ message: 'Email already exists' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+            const [userResult] = await connection.query(
+                'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
+                [email, passwordHash, 'player']
+            );
+            
+            await connection.query(
+                'INSERT INTO player (user_id, name, gender, age, approval_status) VALUES (?, ?, ?, ?, ?)',
+                [userResult.insertId, name, gender || null, age || null, 'Pending']
+            );
+            await connection.commit();
+            res.status(201).json({ message: 'Registration successful. Waiting for coach approval.' });
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
 exports.login = async (req, res) => {
     try {
         const { email, password, role } = req.body;
