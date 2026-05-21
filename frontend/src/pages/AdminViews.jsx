@@ -252,7 +252,7 @@ export const AllPerformance = () => {
 
             <div className="glass-table-container">
                 <table className="glass-table">
-                    <thead><tr><th>PERSONNEL</th><th>DOMAIN</th><th>SUPERVISOR</th><th>SKILL INDEX</th><th>CONDUCT</th><th>FINAL SCORE</th></tr></thead>
+                    <thead><tr><th>PERSONNEL</th><th>DOMAIN</th><th>SUPERVISOR</th><th>STATUS</th><th>SKILL INDEX</th><th>CONDUCT</th><th>FINAL SCORE</th></tr></thead>
                     <tbody>
                         {players.map(p => (
                             <tr key={p.player_id}>
@@ -262,6 +262,9 @@ export const AllPerformance = () => {
                                 </td>
                                 <td style={{ fontWeight: 700 }}>FOOTBALL</td>
                                 <td>{p.captain_name ?? '—'}</td>
+                                <td>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '4px 8px', borderRadius: '4px', background: p.approval_status === 'Pending' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: p.approval_status === 'Pending' ? 'var(--accent-warning)' : 'var(--accent-success)' }}>{p.approval_status || 'Approved'}</span>
+                                </td>
                                 <td>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{p.skill_level || 'ADVANCED'}</span>
                                 </td>

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 
 import { ManageUsers, ManageSports, AllPerformance, ApprovalsOverview, SystemSettings } from './AdminViews';
-import { LeadershipManagement, PlayerReview } from './CoachViews';
-import { PlayerEntry, SubmissionStatus } from './CaptainViews';
-import { PerformanceOverview, AttendanceHistory, DisciplineSummary } from './PlayerViews';
+import { LeadershipManagement, PlayerReview, CoachProfileOverview, CaptainAttendanceEntry, PendingApprovals, PendingPlayersReview, AddPlayerDirectly } from './CoachViews';
+import { PlayerEntry, SubmissionStatus, CaptainProfileOverview, SquadList } from './CaptainViews';
+import { PerformanceOverview, AttendanceHistory, DisciplineSummary, WeeklyProgressReport, MyTeammates } from './PlayerViews';
 import { AnnualOversight, StructuralMapping, SuccessMetrics } from './DirectorViews';
-import { ResourceAllocation, PersonnelMonitoring, EventCoordinator } from './ManagerViews';
+import { ResourceAllocation, PersonnelMonitoring, EventCoordinator, ManagerProfileOverview } from './ManagerViews';
 
 // ─── Role-specific welcome home ────────────────────────────────────────────────
 const HomeContent = ({ user }) => {
@@ -99,22 +99,32 @@ const Dashboard = () => {
                 {navLink('/success-metrics', '🏆', 'Metrics')}
             </>);
             case 'manager': return (<>
+                {navLink('/overview', '📊', 'Dashboard')}
                 {navLink('/resource-allocation', '💰', 'Budget')}
                 {navLink('/personnel-monitoring', '👥', 'Staff')}
                 {navLink('/event-coordinator', '📅', 'Events')}
             </>);
             case 'coach': return (<>
-                {navLink('/leadership', '🏅', 'Leadership')}
-                {navLink('/player-review', '👁️', 'Squad Review')}
+                {navLink('/overview', '📊', 'Dashboard')}
+                {navLink('/captain-management', '👤', 'Captain Mgmt')}
+                {navLink('/captain-attendance', '📥', 'Captain Entry')}
+                {navLink('/player-review', '👥', 'Squad Review')}
+                {navLink('/pending-approvals', '⚠', 'Approvals')}
+                {navLink('/pending-players', '⏳', 'Pending Players')}
+                {navLink('/add-player', '➕', 'Add Player')}
             </>);
             case 'captain': return (<>
-                {navLink('/player-entry', '📝', 'Squad Entry')}
-                {navLink('/submission-status', '📊', 'Status')}
+                {navLink('/overview', '📊', 'Dashboard')}
+                {navLink('/squad-list', '👥', 'My Squad')}
+                {navLink('/player-entry', '📝', 'Attendance')}
+                {navLink('/submission-status', '📤', 'Submissions')}
             </>);
             case 'player': return (<>
-                {navLink('/performance', '📊', 'My Stats')}
-                {navLink('/attendance', '📅', 'History')}
-                {navLink('/discipline', '🛡️', 'Conduct')}
+                {navLink('/overview', '📊', 'Dashboard')}
+                {navLink('/my-teammates', '👥', 'Teammates')}
+                {navLink('/attendance', '📅', 'Attendance')}
+                {navLink('/discipline', '⚖', 'Discipline')}
+                {navLink('/progress', '📈', 'Progress')}
             </>);
             default: return <li><Link to="/dashboard" className="glass-link active">Home</Link></li>;
         }
@@ -167,21 +177,32 @@ const Dashboard = () => {
                     <Route path="/success-metrics" element={<SuccessMetrics />} />
 
                     {/* Manager */}
+                    <Route path="/overview" element={<ManagerProfileOverview />} />
                     <Route path="/resource-allocation" element={<ResourceAllocation />} />
                     <Route path="/personnel-monitoring" element={<PersonnelMonitoring />} />
                     <Route path="/event-coordinator" element={<EventCoordinator />} />
 
                     {/* Coach */}
-                    <Route path="/leadership" element={<LeadershipManagement />} />
+                    <Route path="/overview" element={<CoachProfileOverview />} />
+                    <Route path="/captain-management" element={<LeadershipManagement />} />
+                    <Route path="/captain-attendance" element={<CaptainAttendanceEntry />} />
                     <Route path="/player-review" element={<PlayerReview />} />
+                    <Route path="/pending-approvals" element={<PendingApprovals />} />
+                    <Route path="/pending-players" element={<PendingPlayersReview />} />
+                    <Route path="/add-player" element={<AddPlayerDirectly />} />
 
                     {/* Captain */}
+                    <Route path="/overview" element={<CaptainProfileOverview />} />
                     <Route path="/player-entry" element={<PlayerEntry />} />
                     <Route path="/submission-status" element={<SubmissionStatus />} />
+                    <Route path="/squad-list" element={<SquadList />} />
 
                     {/* Player */}
+                    <Route path="/overview" element={<PerformanceOverview />} />
                     <Route path="/attendance" element={<AttendanceHistory />} />
                     <Route path="/discipline" element={<DisciplineSummary />} />
+                    <Route path="/progress" element={<WeeklyProgressReport />} />
+                    <Route path="/my-teammates" element={<MyTeammates />} />
                 </Routes>
             </main>
         </div>

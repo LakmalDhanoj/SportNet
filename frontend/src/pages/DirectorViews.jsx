@@ -192,7 +192,7 @@ export const SuccessMetrics = () => {
                 <h3 style={{ marginBottom: '24px' }}>🏅 Player Leaderboard (Top 10)</h3>
                 <div className="glass-table-container" style={{ marginTop: 0 }}>
                     <table className="glass-table">
-                        <thead><tr><th>Rank</th><th>Player Profile</th><th>Category</th><th>Skill Level</th><th>Total Score</th></tr></thead>
+                        <thead><tr><th>Rank</th><th>Player Profile</th><th>Category</th><th>Status</th><th>Skill Level</th><th>Total Score</th></tr></thead>
                         <tbody>
                             {[...players].sort((a, b) => b.total_score - a.total_score).slice(0, 10).map((p, i) => (
                                 <tr key={p.player_id}>
@@ -206,6 +206,9 @@ export const SuccessMetrics = () => {
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Lead: {p.captain_name ?? '—'}</div>
                                     </td>
                                     <td>Football</td>
+                                    <td>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '4px 8px', borderRadius: '4px', background: p.approval_status === 'Pending' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: p.approval_status === 'Pending' ? 'var(--accent-warning)' : 'var(--accent-success)' }}>{p.approval_status || 'Approved'}</span>
+                                    </td>
                                     <td>
                                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{p.skill_level || 'ADVANCED'}</span>
                                     </td>

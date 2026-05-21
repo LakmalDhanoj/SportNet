@@ -64,7 +64,7 @@ The system operates on a "Nested Management" model to ensure accountability and 
    cd frontend
    npm install
    npm run dev
-   ```
+
 
 ## 🔐 Credentials (Seed Data)
 | Role | Email | Password |

@@ -78,6 +78,7 @@ CREATE TABLE coach (
     name VARCHAR(255) NOT NULL,
     gender ENUM('Male', 'Female', 'Other'),
     age INT,
+    team_group VARCHAR(100),
     sport_category VARCHAR(100),
     experience_years INT DEFAULT 0,
     qualification TEXT,
@@ -151,6 +152,7 @@ CREATE TABLE player (
     player_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     managed_by_captain_id INT,
+    approval_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
     name VARCHAR(255) NOT NULL,
     gender ENUM('Male', 'Female', 'Other'),
     age INT,
@@ -290,11 +292,11 @@ INSERT INTO sports_director (user_id, name, gender, age) VALUES (2, 'Rajapaksa F
 INSERT INTO sport_manager (user_id, director_id, name, gender, age, qualification) 
 VALUES (3, 1, 'Chamara Silva', 'Male', 42, 'MBA Sports Management');
 
-INSERT INTO coach (user_id, manager_id, name, gender, age, qualification, coaching_level, specialization, attendance, discipline, evaluation_sc)
-VALUES (4, 1, 'Mike Perera', 'Male', 38, 'B.Sc. Sports Science', 'Professional', 'Strategy', 92.5, 9, 87.5);
+INSERT INTO coach (user_id, manager_id, name, gender, age, team_group, qualification, coaching_level, specializations, attendance, discipline, overall_perf_score)
+VALUES (4, 1, 'Mike Perera', 'Male', 38, 'Alpha Squad', 'B.Sc. Sports Science', 'Professional', 'Strategy', 92.5, 9, 87.5);
 
-INSERT INTO coach (user_id, manager_id, name, gender, age, qualification, coaching_level, specialization, attendance, discipline, evaluation_sc)
-VALUES (5, 1, 'Sarah Silva', 'Female', 35, 'M.Sc. Physical Education', 'Professional', 'Fitness', 95.0, 10, 91.0);
+INSERT INTO coach (user_id, manager_id, name, gender, age, team_group, qualification, coaching_level, specializations, attendance, discipline, overall_perf_score)
+VALUES (5, 1, 'Sarah Silva', 'Female', 35, 'Beta Squad', 'M.Sc. Physical Education', 'Professional', 'Fitness', 95.0, 10, 91.0);
 
 INSERT INTO captain (user_id, managed_by_coach_id, name, gender, age, position, leadership_rt, motivation_lvl, strategy_rt, total_score)
 VALUES (6, 1, 'Kasun Jayawardena', 'Male', 24, 'Forward', 8.5, 9.0, 7.5, 72.50);
