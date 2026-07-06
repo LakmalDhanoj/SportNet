@@ -255,3 +255,181 @@ exports.getCaptainList = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// Get list of directors (dropdown)
+exports.getDirectorList = async (req, res) => {
+    try {
+        const [directors] = await db.query('SELECT director_id, name FROM sports_director ORDER BY name');
+        res.json({ directors });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Get list of managers (dropdown)
+exports.getManagerList = async (req, res) => {
+    try {
+        const [managers] = await db.query('SELECT manager_id, name, sport_specialization FROM sport_manager ORDER BY name');
+        res.json({ managers });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Get system audit logs (Admin/Director)
+exports.getAuditLogs = async (req, res) => {
+    try {
+        const [logs] = await db.query(
+            `SELECT l.*, u.email as user_email 
+             FROM audit_logs l 
+             LEFT JOIN users u ON u.user_id = l.user_id 
+             ORDER BY l.created_at DESC LIMIT 100`
+        );
+        res.json({ logs });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// ── New player registration/approval endpoints ────────────────────────────────
+
+exports.getPendingPlayers = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+        
+        const [players] = await db.query(
+            `SELECT p.player_id, p.name, p.gender, p.age, p.approval_status, p.position, p.sport_category, u.email 
+             FROM player p
+             JOIN users u ON p.user_id = u.user_id
+             WHERE p.approval_status = 'Pending'`
+        );
+        res.json({ players });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.approvePlayer = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+        
+        const { id } = req.params;
+        const { captain_id } = req.body;
+        
+        if (!captain_id) return res.status(400).json({ message: 'Captain ID is required to approve a player' });
+        
+        await db.query(
+            "UPDATE player SET approval_status = 'Approved', managed_by_captain_id = ? WHERE player_id = ?",
+            [captain_id, id]
+        );
+        res.json({ message: 'Player approved and assigned to captain' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.coachAddPlayer = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+        
+        const { email, password, name, gender, age, captain_id } = req.body;
+        if (!email || !password || !name || !captain_id) {
+            return res.status(400).json({ message: 'Email, password, name, and captain ID are required' });
+        }
+
+        const lowerEmail = email.toLowerCase();
+        if (!lowerEmail.endsWith('@stu.vau.ac.lk')) {
+            return res.status(400).json({ message: 'Player email must end with @stu.vau.ac.lk.' });
+        }
+        
+        const passwordHash = await bcrypt.hash(password, 10);
+        
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+            const [userResult] = await connection.query(
+                'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
+                [email, passwordHash, 'player']
+            );
+            
+            await connection.query(
+                "INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, approval_status) VALUES (?, ?, ?, ?, ?, 'Approved')",
+                [userResult.insertId, captain_id, name, gender || null, age || null]
+            );
+            await connection.commit();
+            res.status(201).json({ message: 'Player added successfully' });
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'Email already exists' });
+        }
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.getMyTeammates = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'player') return res.status(403).json({ message: 'Forbidden' });
+        
+        const [playerRows] = await db.query('SELECT managed_by_captain_id FROM player WHERE user_id = ?', [user_id]);
+        if (!playerRows.length || !playerRows[0].managed_by_captain_id) {
+            return res.json({ teammates: [] });
+        }
+        
+        const [teammates] = await db.query(
+            `SELECT p.player_id, p.name, p.age, p.gender, p.position, p.skill_level, u.email 
+             FROM player p
+             JOIN users u ON p.user_id = u.user_id
+             WHERE p.managed_by_captain_id = ? AND p.user_id != ?`,
+            [playerRows[0].managed_by_captain_id, user_id]
+        );
+        res.json({ teammates });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.uploadProfilePhoto = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'player') {
+            return res.status(403).json({ message: 'Only players can upload profile photos.' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded.' });
+        }
+
+        const photoPath = `uploads/${req.file.filename}`;
+
+        await db.query(
+            'UPDATE player SET profile_photo = ? WHERE user_id = ?',
+            [photoPath, user_id]
+        );
+
+        res.json({
+            message: 'Profile photo updated successfully.',
+            photo_photo: photoPath,
+            photoUrl: `http://localhost:5000/${photoPath}`
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ message: 'Server error uploading profile photo.' });
+    }
+};
