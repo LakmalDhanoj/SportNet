@@ -1,4 +1,4 @@
-const db = require('../config/db');
+ const db = require('../config/db');
 const { logAction } = require('../utils/logger');
 
 // ─── PLAYER REPORTS (submitted by Captain) ───────────────────────────────────
@@ -286,7 +286,7 @@ exports.submitCaptainReport = async (req, res) => {
 exports.getDirectorOverview = async (req, res) => {
     try {
         const { role } = req.user;
-        if (!['director', 'admin'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
+        if (role !== 'director') return res.status(403).json({ message: 'Forbidden' });
 
         const [[{ total_submitted }]] = await db.query(
             "SELECT COUNT(*) AS total_submitted FROM player_reports"
@@ -322,17 +322,11 @@ exports.getDirectorOverview = async (req, res) => {
 // Manager: get coach performance overview
 exports.getManagerOverview = async (req, res) => {
     try {
-        const { role, user_id } = req.user;
-        if (!['manager', 'admin', 'director'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
-
-        let managerProfile = null;
-        if (role === 'manager') {
-            const [mgrRows] = await db.query('SELECT * FROM sport_manager WHERE user_id = ?', [user_id]);
-            if (mgrRows.length > 0) managerProfile = mgrRows[0];
-        }
+        const { role } = req.user;
+        if (!['manager', 'director'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
 
         const [coaches] = await db.query(
-            `SELECT c.coach_id, c.name, c.discipline, c.overall_perf_score AS evaluation_sc,
+            `SELECT c.coach_id, c.name, c.discipline, c.evaluation_sc,
                     COUNT(DISTINCT cap.captain_id) AS captain_count,
                     COUNT(DISTINCT cr.report_id) AS reports_filed,
                     SUM(CASE WHEN pr.status = 'Final Approved' THEN 1 ELSE 0 END) AS approved_count
@@ -342,7 +336,7 @@ exports.getManagerOverview = async (req, res) => {
              LEFT JOIN player_reports pr ON pr.captain_id = cap.captain_id
              GROUP BY c.coach_id`
         );
-        res.json({ coaches, managerProfile });
+        res.json({ coaches });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
@@ -372,38 +366,6 @@ exports.getPlayerReports = async (req, res) => {
         const attendanceRate = reports.length > 0 ? Math.round((totalPresent / reports.length) * 100) : 0;
 
         res.json({ player: playerRows[0], reports, attendanceRate });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-// Captain: get full 8-part overview
-exports.getCaptainOverview = async (req, res) => {
-    try {
-        const { user_id, role } = req.user;
-        if (role !== 'captain') return res.status(403).json({ message: 'Forbidden' });
-        
-        const [rows] = await db.query('SELECT * FROM captain WHERE user_id = ?', [user_id]);
-        if (!rows.length) return res.status(404).json({ message: 'Captain profile not found' });
-        
-        res.json({ captainProfile: rows[0] });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-// Coach: get full 8-part overview
-exports.getCoachOverview = async (req, res) => {
-    try {
-        const { user_id, role } = req.user;
-        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
-        
-        const [rows] = await db.query('SELECT * FROM coach WHERE user_id = ?', [user_id]);
-        if (!rows.length) return res.status(404).json({ message: 'Coach profile not found' });
-        
-        res.json({ coachProfile: rows[0] });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

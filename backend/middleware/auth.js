@@ -16,12 +16,12 @@ const protect = (req, res, next) => {
     }
 };
 
-const adminOnly = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+const directorOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'director') {
         next();
     } else {
-        res.status(403).json({ message: 'Admin access required' });
+        res.status(403).json({ message: 'Director access required' });
     }
 };
 
-module.exports = { protect, adminOnly };
+module.exports = { protect, directorOnly };

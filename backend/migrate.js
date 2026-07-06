@@ -17,7 +17,9 @@ async function migrate() {
             'sports_director',
             'sports',
             'users',
-            'game'
+            'game',
+            'player_requests',
+            'player_comments'
         ];
         for (const t of tablesToDrop) {
             await db.query(`DROP TABLE IF EXISTS ${t}`);

@@ -18,6 +18,8 @@ router.post('/captain', protect, rc.submitCaptainReport);
 // ── Overview ──────────────────────────────────────────────────────────────────
 router.get('/overview/director', protect, rc.getDirectorOverview);
 router.get('/overview/manager', protect, rc.getManagerOverview);
+// router.get('/overview/captain', protect, rc.getCaptainOverview);
+// router.get('/overview/coach', protect, rc.getCoachOverview);
 
 // ── Player self-view ──────────────────────────────────────────────────────────
 router.get('/player/my-reports', protect, rc.getPlayerReports);
