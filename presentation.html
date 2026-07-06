@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SportNet — Project Presentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #050810;
+    --surface: #0d1220;
+    --card:    #111827;
+    --border:  rgba(255,255,255,0.08);
+    --blue:    #3b82f6;
+    --purple:  #8b5cf6;
+    --cyan:    #06b6d4;
+    --green:   #10b981;
+    --yellow:  #f59e0b;
+    --red:     #ef4444;
+    --pink:    #ec4899;
+    --text:    #f1f5f9;
+    --muted:   #64748b;
+  }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); }
+
+  /* ── Deck ── */
+  .deck { width: 100%; height: 100vh; position: relative; overflow: hidden; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity .55s ease, transform .55s ease;
+    transform: translateX(60px);
+    padding: 52px 64px;
+    overflow: hidden;
+  }
+  .slide.active  { opacity: 1; pointer-events: all; transform: translateX(0); }
+  .slide.leaving { opacity: 0; transform: translateX(-60px); }
+
+  /* background mesh */
+  .slide::before {
+    content: '';
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 55% at 15% 20%, rgba(59,130,246,.13) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 50% at 85% 80%, rgba(139,92,246,.11) 0%, transparent 65%);
+  }
+  .slide > * { position: relative; z-index: 1; }
+
+  /* ── Slide label ── */
+  .slide-label {
+    font-size: .68rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--blue); display: flex; align-items: center; gap: 8px; margin-bottom: 28px;
+  }
+  .slide-label span { width: 28px; height: 2px; background: var(--blue); display: inline-block; border-radius: 2px; }
+
+  /* ── Headings ── */
+  h1 { font-size: 3.2rem; font-weight: 900; letter-spacing: -.04em; line-height: 1.1; }
+  h2 { font-size: 2.2rem; font-weight: 900; letter-spacing: -.03em; line-height: 1.15; }
+  h3 { font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; }
+  h4 { font-size: .85rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+
+  .accent { background: linear-gradient(135deg, var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .accent-green { background: linear-gradient(135deg, var(--cyan), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .accent-warm  { background: linear-gradient(135deg, var(--yellow), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ── Cards & grids ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 24px 28px;
+  }
+  .card-sm { padding: 18px 22px; border-radius: 14px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 100px; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+  }
+  .badge-blue   { background: rgba(59,130,246,.15);  color: var(--blue);   border: 1px solid rgba(59,130,246,.3); }
+  .badge-purple { background: rgba(139,92,246,.15);  color: var(--purple); border: 1px solid rgba(139,92,246,.3); }
+  .badge-green  { background: rgba(16,185,129,.15);  color: var(--green);  border: 1px solid rgba(16,185,129,.3); }
+  .badge-yellow { background: rgba(245,158,11,.15);  color: var(--yellow); border: 1px solid rgba(245,158,11,.3); }
+  .badge-cyan   { background: rgba(6,182,212,.15);   color: var(--cyan);   border: 1px solid rgba(6,182,212,.3); }
+  .badge-red    { background: rgba(239,68,68,.15);   color: var(--red);    border: 1px solid rgba(239,68,68,.3); }
+
+  /* ── Pill chip ── */
+  .chip { padding: 4px 10px; border-radius: 8px; font-size: .7rem; font-weight: 700; background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--muted); }
+
+  /* ── Icon box ── */
+  .icon-box { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+
+  /* ── List items ── */
+  .check-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .check-list li { display: flex; align-items: flex-start; gap: 10px; font-size: .88rem; color: #cbd5e1; line-height: 1.5; }
+  .check-list li::before { content: '✦'; color: var(--blue); font-size: .7rem; margin-top: 4px; flex-shrink: 0; }
+
+  /* ── Stat pill ── */
+  .stat { text-align: center; }
+  .stat .val { font-size: 2.4rem; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+  .stat .lbl { font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+
+  /* ── Role node ── */
+  .role-node {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 16px 12px; border-radius: 14px;
+    border: 1px solid var(--border); background: var(--card);
+    text-align: center;
+  }
+  .role-icon { font-size: 1.8rem; }
+  .role-title { font-size: .75rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+
+  /* ── Arrow connector ── */
+  .arrow { display: flex; align-items: center; color: var(--muted); font-size: 1.1rem; }
+
+  /* ── Flow step ── */
+  .flow-step { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); }
+  .step-num  { font-size: .65rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .step-text { font-size: .82rem; color: #94a3b8; line-height: 1.45; }
+
+  /* ── DB table card ── */
+  .db-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .db-head { padding: 10px 16px; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .db-field { padding: 7px 16px; font-size: .72rem; font-family: 'JetBrains Mono', monospace; color: #94a3b8; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
+  .db-field .type { color: var(--cyan); font-size: .65rem; }
+
+  /* ── Tech stack pill ── */
+  .tech-pill { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--border); }
+  .tech-icon { font-size: 1.4rem; }
+  .tech-info .name { font-size: .8rem; font-weight: 800; }
+  .tech-info .desc { font-size: .68rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { margin-top: 6px; height: 6px; background: rgba(255,255,255,.06); border-radius: 99px; overflow: hidden; }
+  .progress-bar  { height: 100%; border-radius: 99px; transition: width 1.2s cubic-bezier(.4,0,.2,1) .3s; }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item { display: flex; gap: 16px; }
+  .tl-line { display: flex; flex-direction: column; align-items: center; }
+  .tl-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .tl-seg  { width: 2px; flex: 1; background: var(--border); margin-top: 4px; margin-bottom: 4px; }
+  .tl-content { padding-bottom: 18px; }
+  .tl-title  { font-size: .85rem; font-weight: 800; }
+  .tl-detail { font-size: .75rem; color: var(--muted); margin-top: 3px; }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; z-index: 100;
+    background: rgba(13,18,32,.85); backdrop-filter: blur(20px);
+    border: 1px solid var(--border); border-radius: 100px; padding: 10px 20px;
+  }
+  .nav-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border);
+    background: transparent; color: var(--text); cursor: pointer; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .nav-btn:hover { background: var(--blue); border-color: var(--blue); }
+  .nav-dots { display: flex; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); cursor: pointer; transition: all .2s; }
+  .dot.on { background: var(--blue); transform: scale(1.3); }
+  .slide-counter { font-size: .75rem; font-weight: 700; color: var(--muted); min-width: 46px; text-align: center; }
+
+  /* ── Divider ── */
+  hr.dim { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  /* ── Outcome card ── */
+  .outcome-card { border-radius: 16px; padding: 22px; border: 1px solid; position: relative; overflow: hidden; }
+  .outcome-card::before { content: ''; position: absolute; top: -30%; right: -10%; width: 120px; height: 120px; border-radius: 50%; filter: blur(40px); opacity: .25; }
+
+  /* ── API route ── */
+  .route { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px solid var(--border); margin-bottom: 6px; }
+  .method { font-size: .65rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; min-width: 46px; text-align: center; }
+  .method-get  { background: rgba(16,185,129,.2);  color: var(--green); }
+  .method-post { background: rgba(59,130,246,.2);  color: var(--blue); }
+  .method-put  { background: rgba(245,158,11,.2);  color: var(--yellow); }
+  .method-del  { background: rgba(239,68,68,.2);   color: var(--red); }
+  .route-path  { font-family: 'JetBrains Mono', monospace; font-size: .75rem; color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 1 — Requirement Analysis (Part 1)
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide active" id="s1">
+    <div class="slide-label"><span></span>Requirement Analysis · Slide 1 of 7</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;flex:1;align-items:start">
+      <!-- Left -->
+      <div>
+        <p style="font-size:.85rem;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px">Project Overview</p>
+        <h2><span class="accent">SportNet</span><br/>Campus Sports<br/>Management</h2>
+        <p style="color:#94a3b8;margin-top:18px;line-height:1.7;font-size:.9rem">
+          A full-stack, role-based web platform that digitizes and streamlines every aspect of campus sports administration — from player enrollment to performance reporting and approval workflows.
+        </p>
+
+        <div style="margin-top:28px;display:flex;flex-direction:column;gap:10px">
+          <div class="badge badge-blue">🏫 Campus-Issued Email Login</div>
+          <div class="badge badge-purple">🔐 Role-Based Access Control</div>
+          <div class="badge badge-green">📋 Coach Approval Workflow</div>
+          <div class="badge badge-yellow">📊 Real-Time Performance Reports</div>
+        </div>
+
+        <hr class="dim" style="margin-top:28px"/>
+
+        <div class="grid-3" style="margin-top:0;gap:14px">
+          <div class="stat"><div class="val accent">5</div><div class="lbl">User Roles</div></div>
+          <div class="stat"><div class="val accent">4</div><div class="lbl">Sports</div></div>
+          <div class="stat"><div class="val accent">12</div><div class="lbl">DB Tables</div></div>
+        </div>
+      </div>
+
+      <!-- Right — Stakeholder roles -->
+      <div>
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">Identified Stakeholders & Roles</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div class="card card-sm" style="border-left:3px solid var(--yellow)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="icon-box" style="background:rgba(245,158,11,.12)">🏛️</div>
+              <div>
+                <h4 style="color:var(--yellow)">Sports Director</h4>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:3px">Adds sports categories, manages all users, views global performance indicators</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-sm" style="border-left:3px solid var(--purple)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="icon-box" style="background:rgba(139,92,246,.12)">💼</div>
+              <div>
+                <h4 style="color:var(--purple)">Sport Manager</h4>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:3px">Allocates resources, monitors coach performance, coordinates events</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-sm" style="border-left:3px solid var(--blue)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="icon-box" style="background:rgba(59,130,246,.12)">📋</div>
+              <div>
+                <h4 style="color:var(--blue)">Coach</h4>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:3px">Approves players, reviews captain reports, provides feedback & evaluations</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-sm" style="border-left:3px solid var(--green)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="icon-box" style="background:rgba(16,185,129,.12)">🎖️</div>
+              <div>
+                <h4 style="color:var(--green)">Captain</h4>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:3px">Handles daily attendance, submits squad reports, requests new players to coach</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-sm" style="border-left:3px solid var(--cyan)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="icon-box" style="background:rgba(6,182,212,.12)">👟</div>
+              <div>
+                <h4 style="color:var(--cyan)">Player</h4>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:3px">Self-registers with campus email, views own reports, performance history & teammates</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 2 — Requirement Analysis (Part 2)
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="s2">
+    <div class="slide-label"><span></span>Requirement Analysis · Slide 2 of 7</div>
+    <h2 style="margin-bottom:28px">Functional &amp; Non-Functional <span class="accent">Requirements</span></h2>
+
+    <div class="grid-2" style="flex:1;align-items:start;gap:28px">
+      <!-- Functional -->
+      <div>
+        <p class="badge badge-blue" style="margin-bottom:18px;display:inline-flex">⚙️ Functional Requirements</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div class="card card-sm">
+            <h4 style="color:var(--blue);margin-bottom:8px">Authentication &amp; Registration</h4>
+            <ul class="check-list">
+              <li>Player self-registration using campus-issued email only (.edu / .ac.lk / .edu.lk)</li>
+              <li>Admin assigns default password; credentials managed by admin</li>
+              <li>JWT-based secure login with per-role routing</li>
+              <li>Pending players blocked from login until coach approval</li>
+            </ul>
+          </div>
+
+          <div class="card card-sm">
+            <h4 style="color:var(--purple);margin-bottom:8px">Player Enrolment Workflow</h4>
+            <ul class="check-list">
+              <li>Players cannot join directly; must pass through coach approval</li>
+              <li>Captain submits player request → Coach reviews → Approve / Reject</li>
+              <li>Coach can directly add players and assign them to a captain</li>
+              <li>Sport category &amp; position captured at registration</li>
+            </ul>
+          </div>
+
+          <div class="card card-sm">
+            <h4 style="color:var(--green);margin-bottom:8px">Reporting &amp; Evaluation</h4>
+            <ul class="check-list">
+              <li>Captain submits daily player reports (Attendance, Discipline, Training Hours)</li>
+              <li>Coach reviews, overrides, and gives feedback on player reports</li>
+              <li>Coach evaluates captain leadership via structured captain reports</li>
+              <li>Director views global metrics; Manager monitors coach performance</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Non-functional + Constraints -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <p class="badge badge-yellow" style="display:inline-flex">🔒 Non-Functional Requirements</p>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--yellow);margin-bottom:8px">Security</h4>
+          <ul class="check-list">
+            <li>Passwords hashed using bcryptjs (salt rounds: 10)</li>
+            <li>JWT tokens for stateless authentication; role verified on every request</li>
+            <li>Campus email domain validation at both frontend and backend layers</li>
+            <li>Full audit log trail for all critical user actions</li>
+          </ul>
+        </div>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--cyan);margin-bottom:8px">Usability &amp; Performance</h4>
+          <ul class="check-list">
+            <li>Single-page application; navigation without full page reloads</li>
+            <li>Role-specific sidebar menus with contextual navigation</li>
+            <li>Responsive glass-morphism UI for desktop and tablet</li>
+            <li>MySQL connection pooling for concurrent query handling</li>
+          </ul>
+        </div>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--pink);margin-bottom:8px">Data Integrity</h4>
+          <ul class="check-list">
+            <li>Unique constraints: no duplicate emails, one report per player per date</li>
+            <li>Foreign key cascades to prevent orphaned records</li>
+            <li>Transaction-wrapped registration to ensure atomicity across two tables</li>
+          </ul>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          <span class="chip">React 19 + Vite</span>
+          <span class="chip">Node.js + Express 5</span>
+          <span class="chip">MySQL 8</span>
+          <span class="chip">JWT Auth</span>
+          <span class="chip">bcryptjs</span>
+          <span class="chip">Axios</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 3 — Implementation Outcomes (Part 1)
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="s3">
+    <div class="slide-label"><span></span>Implementation Outcomes · Slide 3 of 7</div>
+    <h2 style="margin-bottom:28px">Delivered <span class="accent-green">Features</span> &amp; Modules</h2>
+
+    <div class="grid-2" style="gap:20px;align-items:start">
+      <!-- Left column -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <div class="outcome-card" style="border-color:rgba(59,130,246,.25);background:rgba(59,130,246,.06)">
+          <div class="outcome-card::before" style="background:var(--blue)"></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:1.6rem">🔐</span>
+            <div><h3>Authentication System</h3><span class="badge badge-blue" style="margin-top:4px">Completed</span></div>
+          </div>
+          <ul class="check-list">
+            <li>Campus email domain validation (.edu / .ac.lk / .edu.lk)</li>
+            <li>Pending-player login block with informative error messages</li>
+            <li>Role-aware JWT login routing all 5 user types correctly</li>
+          </ul>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div>
+        </div>
+
+        <div class="outcome-card" style="border-color:rgba(16,185,129,.25);background:rgba(16,185,129,.06)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:1.6rem">⚽</span>
+            <div><h3>Sport Management</h3><span class="badge badge-green" style="margin-top:4px">Completed</span></div>
+          </div>
+          <ul class="check-list">
+            <li>Director can add, edit, and deactivate sport categories</li>
+            <li>Registration page dynamically loads active sports from database</li>
+            <li>Sport-specific position dropdowns (Football, Cricket, Volleyball etc.)</li>
+            <li>Sport category saved per-player and visible in all roster views</li>
+          </ul>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+        </div>
+
+        <div class="outcome-card" style="border-color:rgba(139,92,246,.25);background:rgba(139,92,246,.06)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:1.6rem">👥</span>
+            <div><h3>Player Enrolment Flow</h3><span class="badge badge-purple" style="margin-top:4px">Completed</span></div>
+          </div>
+          <ul class="check-list">
+            <li>3-path enrolment: Self-register / Captain request / Coach direct-add</li>
+            <li>All paths enforce campus email &amp; go through coach approval</li>
+            <li>Coach assigns approved players to captains in one action</li>
+          </ul>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,var(--purple),var(--pink))"></div></div>
+        </div>
+
+      </div>
+
+      <!-- Right column -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <div class="outcome-card" style="border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:1.6rem">📊</span>
+            <div><h3>Performance Reporting</h3><span class="badge badge-yellow" style="margin-top:4px">Completed</span></div>
+          </div>
+          <ul class="check-list">
+            <li>Captain submits daily player reports (Attendance, Discipline, Training Hours)</li>
+            <li>Draft → Pending → Final Approved status pipeline</li>
+            <li>Coach bulk-approves, overrides values, and adds structured feedback</li>
+            <li>Coach evaluates captains via separate leadership reports</li>
+          </ul>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,var(--yellow),var(--red))"></div></div>
+        </div>
+
+        <div class="outcome-card" style="border-color:rgba(6,182,212,.25);background:rgba(6,182,212,.06)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:1.6rem">📋</span>
+            <div><h3>Player Detail Visibility</h3><span class="badge badge-cyan" style="margin-top:4px">Completed</span></div>
+          </div>
+          <ul class="check-list">
+            <li>All roster views now show: Email, Sport, Position, Age, Gender</li>
+            <li>Captain squad list, Coach pending list, Admin performance — all updated</li>
+            <li>Player teammates view shows full peer profile details</li>
+            <li>Admin AllPerformance pulls live sport_category from database (no hardcoding)</li>
+          </ul>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div>
+        </div>
+
+        <div class="outcome-card" style="border-color:rgba(236,72,153,.25);background:rgba(236,72,153,.06)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:1.6rem">💬</span>
+            <div><h3>Comments &amp; Audit System</h3><span class="badge badge-red" style="margin-top:4px">Completed</span></div>
+          </div>
+          <ul class="check-list">
+            <li>Private player↔coach↔captain comment threads with reply &amp; resolve</li>
+            <li>Full audit log of every critical action (login, approvals, report changes)</li>
+          </ul>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,var(--pink),var(--purple))"></div></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 4 — Implementation Outcomes (Part 2)
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="s4">
+    <div class="slide-label"><span></span>Implementation Outcomes · Slide 4 of 7</div>
+    <h2 style="margin-bottom:26px">API Endpoints &amp; <span class="accent-warm">Verification Results</span></h2>
+
+    <div class="grid-2" style="gap:28px;align-items:start">
+      <!-- API routes -->
+      <div>
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Key REST API Endpoints</p>
+
+        <div class="route"><span class="method method-post">POST</span><span class="route-path">/api/auth/register</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">+ sport + position</span></div>
+        <div class="route"><span class="method method-post">POST</span><span class="route-path">/api/auth/login</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">role-aware + pending block</span></div>
+        <div class="route"><span class="method method-get">GET</span><span class="route-path">/api/sports/public</span><span style="margin-left:auto;font-size:.68rem;color:var(--green)">public · no token</span></div>
+        <div class="route"><span class="method method-post">POST</span><span class="route-path">/api/sports</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">director only</span></div>
+        <div class="route"><span class="method method-get">GET</span><span class="route-path">/api/users/my-players</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">+ email, sport, position</span></div>
+        <div class="route"><span class="method method-get">GET</span><span class="route-path">/api/users/player/my-teammates</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">+ age, gender, email</span></div>
+        <div class="route"><span class="method method-get">GET</span><span class="route-path">/api/users/coach/pending-players</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">+ sport, position, email</span></div>
+        <div class="route"><span class="method method-put">PUT</span><span class="route-path">/api/users/coach/approve-player/:id</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">+ assign captain</span></div>
+        <div class="route"><span class="method method-post">POST</span><span class="route-path">/api/player-requests</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">captain → coach flow</span></div>
+        <div class="route"><span class="method method-post">POST</span><span class="route-path">/api/reports/player</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">batch daily reports</span></div>
+        <div class="route"><span class="method method-put">PUT</span><span class="route-path">/api/reports/player/:id/approve</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">coach override</span></div>
+        <div class="route"><span class="method method-get">GET</span><span class="route-path">/api/users/audit-logs</span><span style="margin-left:auto;font-size:.68rem;color:var(--muted)">admin</span></div>
+      </div>
+
+      <!-- Test results + Metrics -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Integration Test Results</p>
+
+        <div class="card card-sm" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2)">
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Gmail registration rejected</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Campus email (.edu) accepted</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Pending player login blocked</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Coach approval flow end-to-end</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Post-approval player login</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Captain squad: email + sport visible</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span>Teammate details fully populated</span><span style="color:var(--green);font-weight:800">✔ PASS</span></div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:12px">
+          <div class="card card-sm" style="text-align:center">
+            <div class="val" style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">7/7</div>
+            <div class="lbl" style="font-size:.7rem;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:4px">Tests Passed</div>
+          </div>
+          <div class="card card-sm" style="text-align:center">
+            <div class="val" style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--green),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">14</div>
+            <div class="lbl" style="font-size:.7rem;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:4px">DB Users Seeded</div>
+          </div>
+          <div class="card card-sm" style="text-align:center">
+            <div class="val" style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">30+</div>
+            <div class="lbl" style="font-size:.7rem;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:4px">API Routes</div>
+          </div>
+          <div class="card card-sm" style="text-align:center">
+            <div class="val" style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--yellow),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">4</div>
+            <div class="lbl" style="font-size:.7rem;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:4px">Active Sports</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 5 — System Design (Part 1) — Architecture
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="s5">
+    <div class="slide-label"><span></span>System Design · Slide 5 of 7</div>
+    <h2 style="margin-bottom:26px">System <span class="accent">Architecture</span> &amp; Tech Stack</h2>
+
+    <div class="grid-2" style="gap:28px;align-items:start">
+      <!-- Architecture diagram -->
+      <div>
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:16px">3-Tier Architecture</p>
+
+        <!-- Tier 1: Client -->
+        <div class="card" style="border-color:rgba(59,130,246,.3);margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="icon-box" style="background:rgba(59,130,246,.15);font-size:1.1rem">🖥️</div>
+            <div><h4 style="color:var(--blue)">Presentation Tier — React SPA</h4></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="chip">React 19</span>
+            <span class="chip">Vite 8</span>
+            <span class="chip">React Router 7</span>
+            <span class="chip">Axios</span>
+            <span class="chip">Lucide Icons</span>
+            <span class="chip">Glassmorphism CSS</span>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="text-align:center;font-size:.8rem;color:var(--muted);margin:2px 0">↕ HTTP / REST JSON (JWT Bearer Token)</div>
+
+        <!-- Tier 2: API -->
+        <div class="card" style="border-color:rgba(139,92,246,.3);margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="icon-box" style="background:rgba(139,92,246,.15);font-size:1.1rem">⚙️</div>
+            <div><h4 style="color:var(--purple)">Application Tier — Express.js API</h4></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="chip">Node.js 24</span>
+            <span class="chip">Express 5</span>
+            <span class="chip">bcryptjs</span>
+            <span class="chip">jsonwebtoken</span>
+            <span class="chip">multer</span>
+            <span class="chip">dotenv</span>
+          </div>
+          <div style="margin-top:12px;font-size:.75rem;color:var(--muted)">
+            Controllers: auth · user · sport · report · playerRequest · comment
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="text-align:center;font-size:.8rem;color:var(--muted);margin:2px 0">↕ mysql2 Connection Pool</div>
+
+        <!-- Tier 3: DB -->
+        <div class="card" style="border-color:rgba(16,185,129,.3)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="icon-box" style="background:rgba(16,185,129,.15);font-size:1.1rem">🗄️</div>
+            <div><h4 style="color:var(--green)">Data Tier — MySQL 8</h4></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="chip">12 Tables</span>
+            <span class="chip">FK Constraints</span>
+            <span class="chip">Unique Constraints</span>
+            <span class="chip">Audit Logs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tech stack + middleware -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Middleware &amp; Security Layer</p>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--yellow);margin-bottom:10px">🔐 JWT Protect Middleware</h4>
+          <p style="font-size:.8rem;color:#94a3b8;line-height:1.6">Every protected route passes through the <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">protect</code> middleware which decodes the JWT and attaches <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">req.user</code> (user_id, role). The <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">directorOnly</code> guard additionally restricts sport management endpoints.</p>
+        </div>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--cyan);margin-bottom:10px">🌐 CORS &amp; Static Files</h4>
+          <p style="font-size:.8rem;color:#94a3b8;line-height:1.6">Express CORS allows the Vite dev server (<code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">localhost:5173</code>) to reach the API at <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">localhost:5000</code>. Profile photos served from <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">/uploads</code> as static assets via multer.</p>
+        </div>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--pink);margin-bottom:10px">📝 Audit Logger Utility</h4>
+          <p style="font-size:.8rem;color:#94a3b8;line-height:1.6">A shared <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">logAction(user_id, action, details)</code> utility writes every significant operation (CREATE_SPORT, APPROVE_PLAYER, SUBMIT_REPORT, etc.) into the <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">audit_logs</code> table.</p>
+        </div>
+
+        <div class="card card-sm">
+          <h4 style="color:var(--green);margin-bottom:10px">⚡ Connection Pool</h4>
+          <p style="font-size:.8rem;color:#94a3b8;line-height:1.6">mysql2 promise pool with a limit of 10 concurrent connections, queue-based overflow handling. Registration uses explicit transaction <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace">BEGIN / COMMIT / ROLLBACK</code> to ensure user + player rows are inserted atomically.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 6 — System Design (Part 2) — Database Schema
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="s6">
+    <div class="slide-label"><span></span>System Design · Slide 6 of 7</div>
+    <h2 style="margin-bottom:22px">Database <span class="accent">Schema</span> Design</h2>
+
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;flex:1;align-items:start">
+
+      <!-- users -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(59,130,246,.12);color:var(--blue)">👤 users</div>
+        <div class="db-field">user_id <span class="type">PK INT</span></div>
+        <div class="db-field">email <span class="type">UNIQUE</span></div>
+        <div class="db-field">password_hash <span class="type">VARCHAR</span></div>
+        <div class="db-field">role <span class="type">ENUM</span></div>
+        <div class="db-field">created_at <span class="type">TIMESTAMP</span></div>
+      </div>
+
+      <!-- player -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(6,182,212,.12);color:var(--cyan)">👟 player</div>
+        <div class="db-field">player_id <span class="type">PK</span></div>
+        <div class="db-field">user_id <span class="type">FK→users</span></div>
+        <div class="db-field">managed_by_captain_id <span class="type">FK</span></div>
+        <div class="db-field">approval_status <span class="type">ENUM</span></div>
+        <div class="db-field">sport_category <span class="type">VARCHAR</span></div>
+        <div class="db-field">position <span class="type">VARCHAR</span></div>
+        <div class="db-field">skill_level <span class="type">VARCHAR</span></div>
+        <div class="db-field">total_score <span class="type">DECIMAL</span></div>
+      </div>
+
+      <!-- captain -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(16,185,129,.12);color:var(--green)">🎖️ captain</div>
+        <div class="db-field">captain_id <span class="type">PK</span></div>
+        <div class="db-field">user_id <span class="type">FK→users</span></div>
+        <div class="db-field">managed_by_coach_id <span class="type">FK</span></div>
+        <div class="db-field">sport_category <span class="type">VARCHAR</span></div>
+        <div class="db-field">leadership_rt <span class="type">DECIMAL</span></div>
+        <div class="db-field">total_score <span class="type">DECIMAL</span></div>
+      </div>
+
+      <!-- coach -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(139,92,246,.12);color:var(--purple)">📋 coach</div>
+        <div class="db-field">coach_id <span class="type">PK</span></div>
+        <div class="db-field">user_id <span class="type">FK→users</span></div>
+        <div class="db-field">manager_id <span class="type">FK</span></div>
+        <div class="db-field">sport_category <span class="type">VARCHAR</span></div>
+        <div class="db-field">overall_perf_score <span class="type">DECIMAL</span></div>
+      </div>
+
+      <!-- sports -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(245,158,11,.12);color:var(--yellow)">🏆 sports</div>
+        <div class="db-field">sport_id <span class="type">PK</span></div>
+        <div class="db-field">sport_name <span class="type">UNIQUE</span></div>
+        <div class="db-field">sport_type <span class="type">VARCHAR</span></div>
+        <div class="db-field">metrics <span class="type">VARCHAR</span></div>
+        <div class="db-field">status <span class="type">ENUM</span></div>
+        <div class="db-field">created_by <span class="type">FK→users</span></div>
+      </div>
+
+      <!-- player_reports -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(16,185,129,.1);color:var(--green)">📄 player_reports</div>
+        <div class="db-field">report_id <span class="type">PK</span></div>
+        <div class="db-field">player_id <span class="type">FK</span></div>
+        <div class="db-field">captain_id <span class="type">FK</span></div>
+        <div class="db-field">date <span class="type">DATE</span></div>
+        <div class="db-field">attendance <span class="type">ENUM</span></div>
+        <div class="db-field">discipline <span class="type">INT 1–10</span></div>
+        <div class="db-field">status <span class="type">ENUM</span></div>
+        <div class="db-field">coach_feedback <span class="type">TEXT</span></div>
+      </div>
+
+      <!-- player_requests -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(236,72,153,.1);color:var(--pink)">📨 player_requests</div>
+        <div class="db-field">request_id <span class="type">PK</span></div>
+        <div class="db-field">captain_id <span class="type">FK</span></div>
+        <div class="db-field">coach_id <span class="type">FK</span></div>
+        <div class="db-field">player_email <span class="type">UNIQUE</span></div>
+        <div class="db-field">sport_category <span class="type">VARCHAR</span></div>
+        <div class="db-field">status <span class="type">ENUM</span></div>
+      </div>
+
+      <!-- captain_reports -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(59,130,246,.1);color:var(--blue)">📊 captain_reports</div>
+        <div class="db-field">report_id <span class="type">PK</span></div>
+        <div class="db-field">captain_id <span class="type">FK</span></div>
+        <div class="db-field">coach_id <span class="type">FK</span></div>
+        <div class="db-field">strategy_rt <span class="type">DECIMAL</span></div>
+        <div class="db-field">responsibility_rt <span class="type">DECIMAL</span></div>
+        <div class="db-field">status <span class="type">ENUM</span></div>
+      </div>
+
+      <!-- player_comments -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(245,158,11,.1);color:var(--yellow)">💬 player_comments</div>
+        <div class="db-field">comment_id <span class="type">PK</span></div>
+        <div class="db-field">player_id <span class="type">FK</span></div>
+        <div class="db-field">coach_id <span class="type">FK</span></div>
+        <div class="db-field">captain_id <span class="type">FK</span></div>
+        <div class="db-field">sender_role <span class="type">ENUM</span></div>
+        <div class="db-field">status <span class="type">ENUM</span></div>
+      </div>
+
+      <!-- audit_logs -->
+      <div class="db-card">
+        <div class="db-head" style="background:rgba(239,68,68,.1);color:var(--red)">🔍 audit_logs</div>
+        <div class="db-field">log_id <span class="type">PK</span></div>
+        <div class="db-field">user_id <span class="type">FK→users</span></div>
+        <div class="db-field">action <span class="type">VARCHAR</span></div>
+        <div class="db-field">details <span class="type">TEXT JSON</span></div>
+        <div class="db-field">created_at <span class="type">TIMESTAMP</span></div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;font-size:.72rem;color:var(--muted)">
+      <span>🔗 All tables linked via Foreign Keys with CASCADE / SET NULL on delete</span>
+      <span style="margin-left:auto">UNIQUE: (player_id, captain_id, date) prevents duplicate daily reports</span>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SLIDE 7 — System Design (Part 3) — Workflow & Data Flow
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="s7">
+    <div class="slide-label"><span></span>System Design · Slide 7 of 7</div>
+    <h2 style="margin-bottom:24px">Core <span class="accent-warm">Workflows</span> &amp; Data Flow</h2>
+
+    <div class="grid-2" style="gap:28px;align-items:start">
+
+      <!-- Left: Player Enrolment Flow -->
+      <div>
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Player Enrolment Workflow</p>
+
+        <div class="timeline">
+
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--blue)"></div><div class="tl-seg"></div></div>
+            <div class="tl-content">
+              <div class="tl-title" style="color:var(--blue)">1. Registration (3 Paths)</div>
+              <div class="tl-detail">Self-register / Captain submits request / Coach direct-add — all require campus email domain validation at frontend + backend</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--yellow)"></div><div class="tl-seg"></div></div>
+            <div class="tl-content">
+              <div class="tl-title" style="color:var(--yellow)">2. Pending State</div>
+              <div class="tl-detail">Player row inserted with <code style="font-size:.7rem;background:rgba(255,255,255,.07);padding:2px 5px;border-radius:4px">approval_status = 'Pending'</code>. Login attempt returns 403 with informative message.</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--purple)"></div><div class="tl-seg"></div></div>
+            <div class="tl-content">
+              <div class="tl-title" style="color:var(--purple)">3. Coach Review</div>
+              <div class="tl-detail">Coach views pending list (with full details: email, sport, position) and selects a captain to assign upon approval</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-line"><div class="tl-dot" style="background:var(--green)"></div><div class="tl-seg"></div></div>
+            <div class="tl-content">
+              <div class="tl-title" style="color:var(--green)">4. Approved &amp; Active</div>
+              <div class="tl-detail">Status set to 'Approved', player linked to captain. Player can now log in and appears in squad rosters &amp; teammates lists</div>
+            </div>
+          </div>
+
+        </div>
+
+        <hr class="dim" />
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Report Status Pipeline</p>
+        <div style="display:flex;align-items:center;gap:8px;font-size:.78rem">
+          <div class="badge badge-blue">Draft</div>
+          <span style="color:var(--muted)">→</span>
+          <div class="badge badge-yellow">Pending</div>
+          <span style="color:var(--muted)">→</span>
+          <div class="badge badge-green">Final Approved</div>
+          <span style="color:var(--muted)">or</span>
+          <div class="badge badge-red">Rejected</div>
+        </div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:8px">Captain saves draft → submits as Pending → Coach approves or overrides and locks as Final Approved</p>
+      </div>
+
+      <!-- Right: Role hierarchy + Sport management flow -->
+      <div>
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Organisational Hierarchy</p>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <div class="role-node" style="border-color:rgba(245,158,11,.4);width:160px">
+            <div class="role-icon">🏛️</div>
+            <div class="role-title" style="color:var(--yellow)">Director</div>
+            <div style="font-size:.65rem;color:var(--muted)">Manages sports &amp; users</div>
+          </div>
+          <div style="font-size:1.2rem;color:var(--muted)">↓</div>
+          <div class="role-node" style="border-color:rgba(139,92,246,.4);width:160px">
+            <div class="role-icon">💼</div>
+            <div class="role-title" style="color:var(--purple)">Manager</div>
+            <div style="font-size:.65rem;color:var(--muted)">Oversees coaches</div>
+          </div>
+          <div style="font-size:1.2rem;color:var(--muted)">↓</div>
+          <div class="role-node" style="border-color:rgba(59,130,246,.4);width:160px">
+            <div class="role-icon">📋</div>
+            <div class="role-title" style="color:var(--blue)">Coach</div>
+            <div style="font-size:.65rem;color:var(--muted)">Approves &amp; evaluates</div>
+          </div>
+          <div style="font-size:1.2rem;color:var(--muted)">↓</div>
+          <div class="role-node" style="border-color:rgba(16,185,129,.4);width:160px">
+            <div class="role-icon">🎖️</div>
+            <div class="role-title" style="color:var(--green)">Captain</div>
+            <div style="font-size:.65rem;color:var(--muted)">Leads squad &amp; reports</div>
+          </div>
+          <div style="font-size:1.2rem;color:var(--muted)">↓</div>
+          <div class="role-node" style="border-color:rgba(6,182,212,.4);width:160px">
+            <div class="role-icon">👟</div>
+            <div class="role-title" style="color:var(--cyan)">Player</div>
+            <div style="font-size:.65rem;color:var(--muted)">Views own performance</div>
+          </div>
+        </div>
+
+        <hr class="dim" />
+        <p style="font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Sport Category Flow</p>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:.78rem">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-yellow">Director</span>
+            <span style="color:var(--muted)">→ Creates sport in DB (name, type, metrics)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-blue">Register Form</span>
+            <span style="color:var(--muted)">→ Fetches active sports via public API</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-cyan">Player</span>
+            <span style="color:var(--muted)">→ Selects sport + position, stored on profile</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-green">All Rosters</span>
+            <span style="color:var(--muted)">→ Display live sport_category from DB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /deck -->
+
+<!-- ── Navigation ── -->
+<nav>
+  <button class="nav-btn" id="prev" title="Previous">←</button>
+  <div class="nav-dots" id="dots"></div>
+  <button class="nav-btn" id="next" title="Next">→</button>
+  <div class="slide-counter" id="ctr">1 / 7</div>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsC  = document.getElementById('dots');
+  const ctr    = document.getElementById('ctr');
+  let cur = 0;
+
+  // build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.onclick = () => go(i);
+    dotsC.appendChild(d);
+  });
+
+  function go(next) {
+    if (next === cur) return;
+    slides[cur].classList.remove('active');
+    slides[cur].classList.add('leaving');
+    setTimeout(() => slides[cur].classList.remove('leaving'), 560);
+    cur = (next + slides.length) % slides.length;
+    slides[cur].classList.add('active');
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === cur));
+    ctr.textContent = `${cur + 1} / ${slides.length}`;
+  }
+
+  document.getElementById('prev').onclick = () => go(cur - 1);
+  document.getElementById('next').onclick = () => go(cur + 1);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(cur + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(cur - 1);
+  });
+
+  // Touch/swipe
+  let tx = 0;
+  document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? cur + 1 : cur - 1);
+  });
+</script>
+</body>
+</html>
