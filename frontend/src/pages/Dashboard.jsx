@@ -1,11 +1,53 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 
-import { ManageUsers, ManageSports, AllPerformance, ApprovalsOverview, SystemSettings } from './AdminViews';
-import { LeadershipManagement, PlayerReview, CoachProfileOverview, CaptainAttendanceEntry, PendingApprovals, PendingPlayersReview, AddPlayerDirectly, CoachPlayerRequestsReview, CoachCommentsView } from './CoachViews';
-import { PlayerEntry, SubmissionStatus, CaptainProfileOverview, SquadList, CaptainPlayerRequests, CaptainCommentsView } from './CaptainViews';
-import { PerformanceOverview, AttendanceHistory, DisciplineSummary, WeeklyProgressReport, MyTeammates, PlayerProfileView } from './PlayerViews';
-import { ResourceAllocation, PersonnelMonitoring, EventCoordinator, ManagerProfileOverview } from './ManagerViews';
+// ── Member module imports (members fill their own files and update these imports)
+// import { ManageUsers, ManageSports, AllPerformance, ApprovalsOverview, SystemSettings } from './AdminViews';
+// import { LeadershipManagement, PlayerReview, CoachProfileOverview, CaptainAttendanceEntry, PendingApprovals, PendingPlayersReview, AddPlayerDirectly, CoachPlayerRequestsReview, CoachCommentsView } from './CoachViews';
+// import { PlayerEntry, SubmissionStatus, CaptainProfileOverview, SquadList, CaptainPlayerRequests, CaptainCommentsView } from './CaptainViews';
+// import { PerformanceOverview, AttendanceHistory, DisciplineSummary, WeeklyProgressReport, MyTeammates, PlayerProfileView } from './PlayerViews';
+// import { ResourceAllocation, PersonnelMonitoring, EventCoordinator, ManagerProfileOverview } from './ManagerViews';
+
+// Temporary placeholder — replaced once members push their components
+const ComingSoon = ({ label }) => (
+    <div style={{ padding: '60px 40px', textAlign: 'center', background: 'var(--bg-surface)', borderRadius: '24px', border: '1px dashed var(--border-dim)' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔧</div>
+        <h2 style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: '1.6rem' }}>{label || 'Coming Soon'}</h2>
+        <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>This section is being built by the assigned team member.</p>
+    </div>
+);
+
+// ── Aliases so route elements below keep the same component names ──
+const ManageUsers            = () => <ComingSoon label="👥 User Management" />;
+const ManageSports           = () => <ComingSoon label="🏆 Sport Management" />;
+const AllPerformance         = () => <ComingSoon label="📈 Performance Overview" />;
+const ApprovalsOverview      = () => <ComingSoon label="✅ Audit / Approvals" />;
+const SystemSettings         = () => <ComingSoon label="⚙️ System Settings" />;
+const LeadershipManagement   = () => <ComingSoon label="👤 Captain Management" />;
+const PlayerReview           = () => <ComingSoon label="👥 Squad Review" />;
+const CoachProfileOverview   = () => <ComingSoon label="📊 Coach Overview" />;
+const CaptainAttendanceEntry = () => <ComingSoon label="📥 Captain Attendance Entry" />;
+const PendingApprovals       = () => <ComingSoon label="⚠️ Pending Approvals" />;
+const PendingPlayersReview   = () => <ComingSoon label="⏳ Pending Players" />;
+const AddPlayerDirectly      = () => <ComingSoon label="➕ Add Player" />;
+const CoachPlayerRequestsReview = () => <ComingSoon label="📋 Player Requests" />;
+const CoachCommentsView      = () => <ComingSoon label="💬 Comments (Coach)" />;
+const PlayerEntry            = () => <ComingSoon label="📝 Daily Attendance Entry" />;
+const SubmissionStatus       = () => <ComingSoon label="📤 Submission Status" />;
+const CaptainProfileOverview = () => <ComingSoon label="📊 Captain Overview" />;
+const SquadList              = () => <ComingSoon label="👥 My Squad" />;
+const CaptainPlayerRequests  = () => <ComingSoon label="➕ Request Player" />;
+const CaptainCommentsView    = () => <ComingSoon label="💬 Comments (Captain)" />;
+const PerformanceOverview    = () => <ComingSoon label="📊 Performance Overview" />;
+const AttendanceHistory      = () => <ComingSoon label="📅 Attendance History" />;
+const DisciplineSummary      = () => <ComingSoon label="⚖️ Discipline Summary" />;
+const WeeklyProgressReport   = () => <ComingSoon label="📈 Weekly Progress" />;
+const MyTeammates            = () => <ComingSoon label="👥 My Teammates" />;
+const PlayerProfileView      = () => <ComingSoon label="👤 My Profile" />;
+const ResourceAllocation     = () => <ComingSoon label="💰 Resource Allocation" />;
+const PersonnelMonitoring    = () => <ComingSoon label="👥 Personnel Monitoring" />;
+const EventCoordinator       = () => <ComingSoon label="📅 Events" />;
+const ManagerProfileOverview = () => <ComingSoon label="📊 Manager Overview" />;
 
 // ─── Role-specific welcome home ────────────────────────────────────────────────
 const HomeContent = ({ user }) => {
