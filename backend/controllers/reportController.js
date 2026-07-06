@@ -280,3 +280,94 @@ exports.submitCaptainReport = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// ─── DIRECTOR OVERVIEW ────────────────────────────────────────────────────────
+
+exports.getDirectorOverview = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'director') return res.status(403).json({ message: 'Forbidden' });
+
+        const [[{ total_submitted }]] = await db.query(
+            "SELECT COUNT(*) AS total_submitted FROM player_reports"
+        );
+        const [[{ total_approved }]] = await db.query(
+            "SELECT COUNT(*) AS total_approved FROM player_reports WHERE status = 'Final Approved'"
+        );
+        const [[{ captain_evals }]] = await db.query(
+            "SELECT COUNT(*) AS captain_evals FROM captain_reports WHERE status = 'Final Approved'"
+        );
+        const [[{ total_captains }]] = await db.query("SELECT COUNT(*) AS total_captains FROM captain");
+        const [[{ total_players }]] = await db.query("SELECT COUNT(*) AS total_players FROM player");
+        const [[{ total_coaches }]] = await db.query("SELECT COUNT(*) AS total_coaches FROM coach");
+        const [[{ pending_reports }]] = await db.query(
+            "SELECT COUNT(*) AS pending_reports FROM player_reports WHERE status = 'Pending'"
+        );
+
+        res.json({
+            total_submitted,
+            total_approved,
+            pending_reports,
+            captain_evals,
+            total_captains,
+            total_players,
+            total_coaches
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Manager: get coach performance overview
+exports.getManagerOverview = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (!['manager', 'director'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
+
+        const [coaches] = await db.query(
+            `SELECT c.coach_id, c.name, c.discipline, c.evaluation_sc,
+                    COUNT(DISTINCT cap.captain_id) AS captain_count,
+                    COUNT(DISTINCT cr.report_id) AS reports_filed,
+                    SUM(CASE WHEN pr.status = 'Final Approved' THEN 1 ELSE 0 END) AS approved_count
+             FROM coach c
+             LEFT JOIN captain cap ON cap.managed_by_coach_id = c.coach_id
+             LEFT JOIN captain_reports cr ON cr.coach_id = c.coach_id
+             LEFT JOIN player_reports pr ON pr.captain_id = cap.captain_id
+             GROUP BY c.coach_id`
+        );
+        res.json({ coaches });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Player: get their own reports
+exports.getPlayerReports = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'player') return res.status(403).json({ message: 'Forbidden' });
+
+        const [playerRows] = await db.query('SELECT * FROM player WHERE user_id = ?', [user_id]);
+        if (!playerRows.length) return res.status(404).json({ message: 'Player profile not found' });
+
+        const [reports] = await db.query(
+            `SELECT pr.date, pr.attendance, pr.discipline, pr.training_hours, pr.notes, pr.status, pr.coach_feedback,
+                    c.name AS captain_name
+             FROM player_reports pr
+             JOIN captain c ON pr.captain_id = c.captain_id
+             WHERE pr.player_id = ?
+             ORDER BY pr.date DESC`,
+            [playerRows[0].player_id]
+        );
+
+        const totalPresent = reports.filter(r => r.attendance === 'Present').length;
+        const attendanceRate = reports.length > 0 ? Math.round((totalPresent / reports.length) * 100) : 0;
+
+        res.json({ player: playerRows[0], reports, attendanceRate });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
