@@ -161,3 +161,232 @@ export const CoachProfileOverview = () => {
         </div>
     );
 };
+
+// ─── COACH: Leadership Management (Evaluate Captains) ─────────────────────────
+export const LeadershipManagement = () => {
+    const [captains, setCaptains] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState(null);
+    const [evalForm, setEvalForm] = useState({ date: new Date().toISOString().split('T')[0], attendance: 'Present', discipline: 'Good', training_hours: 2, strategy_rt: 8, responsibility_rt: 8, notes: '' });
+    const [saving, setSaving] = useState(false);
+    const [msg, setMsg] = useState('');
+
+    useEffect(() => {
+        getMyCaptains().then(r => { setCaptains(r.data.captains); setLoading(false); }).catch(() => setLoading(false));
+    }, []);
+
+    const handleEval = async (e) => {
+        e.preventDefault(); setSaving(true); setMsg('');
+        try {
+            await submitCaptainReport({ captain_id: selected.captain_id, ...evalForm });
+            setMsg(`✅ Leadership assessment finalized for ${selected.name}`);
+            setSelected(null);
+        } catch { alert('Evaluation failed'); } finally { setSaving(false); }
+    };
+
+    if (loading) return <Spinner />;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Captain Leadership Evaluation</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Coach holds final authority over Captain performance metrics.</p>
+            </div>
+
+            <Alert msg={msg} type="success" />
+
+            <div className="stats-grid">
+                <div className="glass-card stat-card">
+                    <div className="stat-label">Assigned Captains</div>
+                    <div className="stat-value">{captains.length}</div>
+                </div>
+                <div className="glass-card stat-card">
+                    <div className="stat-label">Active Sports</div>
+                    <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>Football</div>
+                </div>
+            </div>
+
+            <div className="glass-table-container">
+                <table className="glass-table">
+                    <thead><tr><th>Captain Profile</th><th>Leadership RT</th><th>Strategy</th><th>Total Score</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {captains.length === 0 ? (
+                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No captains assigned</td></tr>
+                        ) : captains.map(c => (
+                            <tr key={c.captain_id}>
+                                <td>
+                                    <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{c.name}</div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Squad Leader</div>
+                                </td>
+                                <td>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${(c.leadership_rt || 0) * 10}%`, height: '100%', background: 'var(--accent-primary)' }}></div>
+                                        </div>
+                                        <span style={{ fontWeight: 700 }}>{c.leadership_rt}/10</span>
+                                    </div>
+                                </td>
+                                <td>{c.strategy_rt}/10</td>
+                                <td><strong style={{ color: 'var(--accent-primary)', fontSize: '1.1rem' }}>{c.total_score}</strong></td>
+                                <td>
+                                    <button className="glass-button primary-btn" style={{ padding: '8px 16px', fontSize: '0.75rem' }} onClick={() => setSelected(c)}>
+                                        EVALUATE
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {selected && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+                    <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: '560px', padding: '40px', borderRadius: '24px', border: '1px solid var(--accent-primary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+                            <div>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Leadership Assessment</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Captain: {selected.name}</p>
+                            </div>
+                            <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem' }}>×</button>
+                        </div>
+                        <form onSubmit={handleEval} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div className="form-group">
+                                <label>Strategy & Planning (1-10)</label>
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                    <input type="range" min="1" max="10" className="glass-input" value={evalForm.strategy_rt} onChange={e => setEvalForm({ ...evalForm, strategy_rt: e.target.value })} style={{ padding: 0 }} />
+                                    <span style={{ fontWeight: 800, color: 'var(--accent-primary)', minWidth: '25px' }}>{evalForm.strategy_rt}</span>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Team Responsibility (1-10)</label>
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                    <input type="range" min="1" max="10" className="glass-input" value={evalForm.responsibility_rt} onChange={e => setEvalForm({ ...evalForm, responsibility_rt: e.target.value })} style={{ padding: 0 }} />
+                                    <span style={{ fontWeight: 800, color: 'var(--accent-primary)', minWidth: '25px' }}>{evalForm.responsibility_rt}</span>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Coach Observations</label>
+                                <textarea className="glass-input" rows="3" placeholder="Identify areas for improvement..." value={evalForm.notes} onChange={e => setEvalForm({ ...evalForm, notes: e.target.value })}></textarea>
+                            </div>
+                            <button type="submit" className="glass-button primary-btn" style={{ height: '54px' }} disabled={saving}>
+                                {saving ? 'FINALIZING...' : 'SUBMIT FINAL EVALUATION'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// ─── COACH: Captain Attendance Entry (NEW) ───────────────────────────────────
+export const CaptainAttendanceEntry = () => {
+    const [captains, setCaptains] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [form, setForm] = useState({ attendance: 'Present', discipline: 'Good', training_hours: 2, notes: '' });
+    const [saving, setSaving] = useState(false);
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+
+    useEffect(() => {
+        import('../services/api').then(({ getMyCaptains }) => {
+            getMyCaptains().then(r => { 
+                setCaptains(r.data.captains); 
+                setLoading(false); 
+                if(r.data.captains.length > 0) setSelected(r.data.captains[0].captain_id); 
+            }).catch(() => setLoading(false));
+        });
+    }, []);
+
+    const handleSave = async () => {
+        if (!selected) return;
+        setSaving(true); setMsg(''); setErr('');
+        try {
+            const { submitCaptainReport } = await import('../services/api');
+            await submitCaptainReport({ captain_id: selected, date, ...form, strategy_rt: 8, responsibility_rt: 8 });
+            setMsg('✅ Captain Record successfully saved (Final Authority Data).');
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Error saving record');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <Spinner />;
+
+    const capt = captains.find(c => c.captain_id.toString() === selected.toString());
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Captain Attendance & Discipline</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Coach holds final authority over Captain metrics.</p>
+            </div>
+
+            <Alert msg={msg} type="success" /><Alert msg={err} type="error" />
+
+            <div className="glass-panel" style={{ padding: '30px', maxWidth: '600px', margin: '0 auto', border: '1px solid var(--accent-primary)' }}>
+                <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-dim)', paddingBottom: '15px' }}>
+                    <div className="form-group">
+                        <label>Select Captain</label>
+                        <select className="glass-input" value={selected} onChange={e => setSelected(e.target.value)}>
+                            {captains.map(c => <option key={c.captain_id} value={c.captain_id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    {capt && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
+                            <div><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sport:</span> <strong style={{ color: 'var(--accent-secondary)' }}>Football</strong></div>
+                            <div><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Leader ID:</span> <strong>CAP-{capt.captain_id}</strong></div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="form-group">
+                    <label>Date</label>
+                    <input type="date" className="glass-input" value={date} onChange={e => setDate(e.target.value)} />
+                </div>
+                <div className="form-group">
+                    <label>Attendance</label>
+                    <select className="glass-input" value={form.attendance} onChange={e => setForm({...form, attendance: e.target.value})}>
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Late">Late</option>
+                        <option value="Training">Training</option>
+                        <option value="Medical Leave">Medical Leave</option>
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label>Discipline</label>
+                    <select className="glass-input" value={form.discipline} onChange={e => setForm({...form, discipline: e.target.value})}>
+                        <option value="Good">Good</option>
+                        <option value="Average">Average</option>
+                        <option value="Poor">Poor</option>
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label>Training Hours</label>
+                    <input type="number" step="0.5" min="0" className="glass-input" 
+                        value={form.training_hours} 
+                        onChange={e => {
+                            const v = parseFloat(e.target.value);
+                            setForm({...form, training_hours: isNaN(v) || v < 0 ? 0 : v});
+                        }} 
+                        onKeyDown={e => {
+                            if (e.key === '-' || e.key === 'e') e.preventDefault();
+                        }} />
+                </div>
+                <div className="form-group">
+                    <label>Notes</label>
+                    <input type="text" className="glass-input" placeholder="Feedback..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
+                </div>
+
+                <button className="glass-button primary-btn" style={{ width: '100%', marginTop: '20px', height: '50px', fontSize: '1rem', fontWeight: 800 }} onClick={handleSave} disabled={saving || !selected}>
+                    {saving ? 'SAVING...' : '💾 SAVE CAPTAIN RECORD'}
+                </button>
+            </div>
+        </div>
+    );
+};
