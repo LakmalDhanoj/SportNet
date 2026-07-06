@@ -197,3 +197,86 @@ exports.bulkApproveByCaption = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// ─── CAPTAIN REPORTS (submitted by Coach) ────────────────────────────────────
+
+// Coach: get their captains list
+exports.getMyCaptains = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
+
+        const [coachRows] = await db.query('SELECT coach_id FROM coach WHERE user_id = ?', [user_id]);
+        if (!coachRows.length) return res.status(404).json({ message: 'Coach profile not found' });
+        const coach_id = coachRows[0].coach_id;
+
+        const [captains] = await db.query(
+            `SELECT c.captain_id, c.name, c.gender, c.age, c.leadership_rt, c.motivation_lvl,
+                    c.strategy_rt, c.total_score,
+                    cr.report_id, cr.date, cr.attendance, cr.discipline, cr.training_hours, cr.notes,
+                    cr.strategy_rt AS eval_strategy, cr.responsibility_rt, cr.status AS report_status
+             FROM captain c
+             LEFT JOIN captain_reports cr ON c.captain_id = cr.captain_id AND cr.coach_id = ?
+             WHERE c.managed_by_coach_id = ?
+             ORDER BY cr.date DESC`,
+            [coach_id, coach_id]
+        );
+        res.json({ captains });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Coach: submit captain evaluation report
+exports.submitCaptainReport = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Only coaches can evaluate captains' });
+
+        const [coachRows] = await db.query('SELECT coach_id FROM coach WHERE user_id = ?', [user_id]);
+        if (!coachRows.length) return res.status(404).json({ message: 'Coach profile not found' });
+        const coach_id = coachRows[0].coach_id;
+
+        const { captain_id, date, attendance, discipline, training_hours, strategy_rt, responsibility_rt, notes } = req.body;
+
+        // Verify captain belongs to this coach
+        const [capCheck] = await db.query(
+            'SELECT captain_id FROM captain WHERE captain_id = ? AND managed_by_coach_id = ?',
+            [captain_id, coach_id]
+        );
+        if (!capCheck.length) return res.status(403).json({ message: 'Not authorized' });
+
+        const [existing] = await db.query(
+            'SELECT report_id FROM captain_reports WHERE captain_id = ? AND coach_id = ? AND date = ?',
+            [captain_id, coach_id, date]
+        );
+
+        if (existing.length > 0) {
+            await db.query(
+                `UPDATE captain_reports SET attendance = ?, discipline = ?, training_hours = ?, strategy_rt = ?,
+                 responsibility_rt = ?, notes = ?, status = 'Final Approved' WHERE report_id = ?`,
+                [attendance, discipline, training_hours || 0, strategy_rt, responsibility_rt, notes || '', existing[0].report_id]
+            );
+        } else {
+            await db.query(
+                `INSERT INTO captain_reports (captain_id, coach_id, date, attendance, discipline, training_hours,
+                 strategy_rt, responsibility_rt, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Final Approved')`,
+                [captain_id, coach_id, date, attendance, discipline, training_hours || 0, strategy_rt, responsibility_rt, notes || '']
+            );
+        }
+
+        // Update captain's total_score (60% from coach eval)
+        const discScore = discipline === 'Good' ? 10 : (discipline === 'Average' ? 7 : 4);
+        const coachScore = (discScore + Number(strategy_rt) + Number(responsibility_rt)) / 3;
+        await db.query(
+            'UPDATE captain SET total_score = ROUND(? * 0.6, 2) WHERE captain_id = ?',
+            [coachScore * 10, captain_id]
+        );
+
+        res.json({ message: 'Captain evaluation saved' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
