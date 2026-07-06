@@ -525,3 +525,504 @@ export const PlayerReview = () => {
         </div>
     );
 };
+
+// ─── COACH: Pending Captain Submissions ───────────────────────────────────────
+export const PendingApprovals = () => {
+    const [reports, setReports] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [msg, setMsg] = useState('');
+
+    const load = useCallback(() => {
+        import('../services/api').then(({ getPlayerReportsForCoach }) => {
+            getPlayerReportsForCoach().then(r => { setReports(r.data.reports.filter(x => x.status === 'Pending')); setLoading(false); }).catch(() => setLoading(false));
+        });
+    }, []);
+    useEffect(() => { load(); }, [load]);
+
+    const handleBulkApprove = async (captain_id) => {
+        const { bulkApproveByCaption } = await import('../services/api');
+        try {
+            await bulkApproveByCaption(captain_id);
+            setMsg('✅ System locked: All records for captain approved.');
+            load();
+        } catch { alert('Failed'); }
+    };
+
+    if (loading) return <Spinner />;
+
+    // Group by captain
+    const grouped = reports.reduce((acc, r) => {
+        if (!acc[r.captain_id]) acc[r.captain_id] = { name: r.captain_name, count: 0 };
+        acc[r.captain_id].count++;
+        return acc;
+    }, {});
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Pending Captain Submissions</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Coach approves everything, system locks records.</p>
+            </div>
+            <Alert msg={msg} type="success" />
+
+            {Object.keys(grouped).length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No pending submissions waiting for approval.</div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {Object.entries(grouped).map(([capId, data]) => (
+                        <div key={capId} className="glass-panel" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ margin: '0 0 5px 0' }}>Captain: {data.name}</h3>
+                                <div style={{ color: 'var(--accent-warning)', fontWeight: 700, fontSize: '0.85rem' }}>Status: Waiting Approval ({data.count} items)</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="glass-button" style={{ borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)' }}>VIEW DETAILS</button>
+                                <button className="glass-button primary-btn" onClick={() => handleBulkApprove(capId)}>APPROVE ALL</button>
+                                <button className="glass-button" style={{ borderColor: 'var(--accent-danger)', color: 'var(--accent-danger)' }}>REJECT ALL</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ─── Legacy export alias (still used in Dashboard routes) ─────────────────────
+export const CaptainEntry = LeadershipManagement;
+export const CoachApproval = PlayerReview;
+
+// ─── COACH: Pending Player Registrations (NEW) ───────────────────────────────────
+export const PendingPlayersReview = () => {
+    const [players, setPlayers] = useState([]);
+    const [captains, setCaptains] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [msg, setMsg] = useState('');
+    const [selectedCaptain, setSelectedCaptain] = useState({});
+
+    const load = () => {
+        import('../services/api').then(({ getPendingPlayers, getMyCaptains }) => {
+            Promise.all([getPendingPlayers(), getMyCaptains()]).then(([pRes, cRes]) => {
+                setPlayers(pRes.data.players);
+                setCaptains(cRes.data.captains);
+                setLoading(false);
+            }).catch(() => setLoading(false));
+        });
+    };
+    useEffect(() => { load(); }, []);
+
+    const handleApprove = async (playerId) => {
+        const capId = selectedCaptain[playerId];
+        if (!capId) {
+            alert('Please select a captain first.');
+            return;
+        }
+        setMsg('');
+        try {
+            const { approvePlayer } = await import('../services/api');
+            await approvePlayer(playerId, { captain_id: capId });
+            setMsg('✅ Player approved and assigned.');
+            load();
+        } catch (e) {
+            alert('Approval failed.');
+        }
+    };
+
+    if (loading) return <div style={{textAlign: 'center', padding: '40px'}}>Loading...</div>;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Pending Player Registrations</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Approve new self-registered players and assign them to a captain.</p>
+            </div>
+            {msg && <div style={{ padding: '10px', background: 'rgba(16,185,129,0.1)', color: '#10b981', marginBottom: '15px' }}>{msg}</div>}
+            
+            <div className="glass-table-container">
+                <table className="glass-table">
+                    <thead><tr><th>Player Details</th><th>Age / Gender</th><th>Sport / Position</th><th>Assign Captain</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        {players.length === 0 ? (
+                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>No pending registrations.</td></tr>
+                        ) : players.map(p => (
+                            <tr key={p.player_id}>
+                                <td>
+                                    <div style={{ fontWeight: 700 }}>{p.name}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email}</div>
+                                </td>
+                                <td>{p.age} / {p.gender}</td>
+                                <td>{p.sport_category || 'Football'} / {p.position || 'N/A'}</td>
+                                <td>
+                                    <select className="glass-input" value={selectedCaptain[p.player_id] || ''} onChange={(e) => setSelectedCaptain({...selectedCaptain, [p.player_id]: e.target.value})} style={{ padding: '5px' }}>
+                                        <option value="">-- Select Captain --</option>
+                                        {captains.map(c => <option key={c.captain_id} value={c.captain_id}>{c.name}</option>)}
+                                    </select>
+                                </td>
+                                <td>
+                                    <button className="glass-button primary-btn" style={{ padding: '6px 12px' }} onClick={() => handleApprove(p.player_id)}>Approve</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// ─── COACH: Add Player Directly (NEW) ───────────────────────────────────
+export const AddPlayerDirectly = () => {
+    const [captains, setCaptains] = useState([]);
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', gender: 'Male', age: '', captain_id: '' });
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        import('../services/api').then(({ getMyCaptains }) => {
+            getMyCaptains().then(r => setCaptains(r.data.captains)).catch(console.error);
+        });
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!formData.captain_id) return alert('Select a captain');
+        setLoading(true); setMsg(''); setErr('');
+
+        const email = formData.email.toLowerCase();
+        const isCampusEmail = email.endsWith('@stu.vau.ac.lk');
+        if (!isCampusEmail) {
+            setErr('Player email must end with @stu.vau.ac.lk.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const { coachAddPlayer } = await import('../services/api');
+            await coachAddPlayer(formData);
+            setMsg('✅ Player created and assigned successfully.');
+            setFormData({ name: '', email: '', password: '', gender: 'Male', age: '', captain_id: '' });
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Failed to add player');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Add Player Directly</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Create a player profile that is automatically approved.</p>
+            </div>
+            {msg && <div style={{ padding: '10px', background: 'rgba(16,185,129,0.1)', color: '#10b981', marginBottom: '15px' }}>{msg}</div>}
+            {err && <div style={{ padding: '10px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', marginBottom: '15px' }}>{err}</div>}
+            
+            <form className="glass-panel" onSubmit={handleSubmit} style={{ padding: '30px', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div>
+                    <label style={{display:'block', marginBottom:'5px', color:'var(--text-muted)'}}>Assign to Captain</label>
+                    <select className="glass-input" value={formData.captain_id} onChange={e => setFormData({...formData, captain_id: e.target.value})} style={{ width: '100%', background: 'var(--bg-deep)' }}>
+                        <option value="">-- Select Captain --</option>
+                        {captains.map(c => <option key={c.captain_id} value={c.captain_id}>{c.name}</option>)}
+                    </select>
+                </div>
+                <div><label style={{display:'block', marginBottom:'5px', color:'var(--text-muted)'}}>Name</label><input type="text" className="glass-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%' }} required /></div>
+                <div><label style={{display:'block', marginBottom:'5px', color:'var(--text-muted)'}}>Email</label><input type="email" className="glass-input" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={{ width: '100%' }} required /></div>
+                <div><label style={{display:'block', marginBottom:'5px', color:'var(--text-muted)'}}>Password</label><input type="password" className="glass-input" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ width: '100%' }} required /></div>
+                <div style={{ display: 'flex', gap: '15px' }}>
+                    <div style={{ flex: 1 }}><label style={{display:'block', marginBottom:'5px', color:'var(--text-muted)'}}>Gender</label><select className="glass-input" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} style={{ width: '100%', background: 'var(--bg-deep)' }}><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                    <div style={{ flex: 1 }}><label style={{display:'block', marginBottom:'5px', color:'var(--text-muted)'}}>Age</label><input type="number" className="glass-input" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} style={{ width: '100%' }} required /></div>
+                </div>
+                <button type="submit" className="glass-button primary-btn" disabled={loading} style={{ height: '50px', marginTop: '10px' }}>{loading ? 'ADDING...' : 'ADD PLAYER'}</button>
+            </form>
+        </div>
+    );
+};
+
+export const CoachPlayerRequestsReview = () => {
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+    const [actioning, setActioning] = useState(false);
+
+    const loadRequests = useCallback(async () => {
+        try {
+            const { getCoachRequests } = await import('../services/api');
+            const res = await getCoachRequests();
+            setRequests(res.data.requests || []);
+        } catch (ex) {
+            console.error(ex);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadRequests();
+    }, [loadRequests]);
+
+    const handleDecision = async (requestId, decision) => {
+        setActioning(true); setMsg(''); setErr('');
+        try {
+            const { reviewPlayerRequest } = await import('../services/api');
+            const res = await reviewPlayerRequest(requestId, decision);
+            setMsg(`✅ Request ${decision.toLowerCase()} successfully: ${res.data.message}`);
+            loadRequests();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Error processing request decision.');
+        } finally {
+            setActioning(false);
+        }
+    };
+
+    if (loading) return <Spinner />;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Captain's Player Submissions</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Review and approve registrations submitted by squad captains.</p>
+            </div>
+
+            <Alert msg={msg} type="success" />
+            <Alert msg={err} type="error" />
+
+            <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-dim)', paddingBottom: '8px', marginBottom: '16px' }}>
+                    ⏳ PENDING SQUAD REGISTRATIONS
+                </h3>
+                <div className="glass-table-container">
+                    <table className="glass-table" style={{ fontSize: '0.85rem' }}>
+                        <thead>
+                            <tr>
+                                <th>Captain Name</th>
+                                <th>Player Details</th>
+                                <th>Gender/Age</th>
+                                <th>Sport/Position</th>
+                                <th>System Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {requests.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                        No pending player registration requests from captains.
+                                    </td>
+                                </tr>
+                            ) : requests.map((req) => (
+                                <tr key={req.request_id}>
+                                    <td>
+                                        <strong style={{ color: 'var(--accent-secondary)' }}>{req.captain_name}</strong>
+                                    </td>
+                                    <td>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{req.player_name}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.player_email}</div>
+                                    </td>
+                                    <td>{req.gender || 'N/A'}, Age: {req.age || 'N/A'}</td>
+                                    <td>{req.sport_category || 'Football'} / {req.position || 'Midfielder'}</td>
+                                    <td>
+                                        {req.is_duplicate === 1 ? (
+                                            <span style={{ color: 'var(--accent-danger)', fontWeight: 800, fontSize: '0.75rem' }}>
+                                                ⚠️ ALREADY REGISTERED
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: 'var(--accent-success)', fontSize: '0.75rem', fontWeight: 600 }}>
+                                                New Unique Account
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button className="glass-button primary-btn" style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                                onClick={() => handleDecision(req.request_id, 'Approved')} disabled={actioning}>
+                                                Approve
+                                            </button>
+                                            <button className="glass-button" style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--accent-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                                                onClick={() => handleDecision(req.request_id, 'Rejected')} disabled={actioning}>
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const CoachCommentsView = () => {
+    const [comments, setComments] = useState([]);
+    const [players, setPlayers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedPlayer, setSelectedPlayer] = useState('');
+    const [newComment, setNewComment] = useState('');
+    const [replyText, setReplyText] = useState({});
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const loadData = useCallback(async () => {
+        try {
+            const { getComments, getMyPlayers } = await import('../services/api');
+            const [cRes, pRes] = await Promise.all([
+                getComments(),
+                getMyPlayers()
+            ]);
+            setComments(cRes.data.comments || []);
+            setPlayers(pRes.data.players || []);
+        } catch (ex) {
+            console.error(ex);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const handleSendComment = async (e) => {
+        e.preventDefault();
+        if (!selectedPlayer) return alert('Please select a player to send comment.');
+        if (!newComment.trim()) return;
+        setSubmitting(true); setMsg(''); setErr('');
+        try {
+            const { addComment } = await import('../services/api');
+            await addComment({ player_id: parseInt(selectedPlayer), message: newComment });
+            setMsg('✅ Comment sent to player successfully.');
+            setNewComment('');
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Failed to send comment.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleReply = async (commentId) => {
+        const text = replyText[commentId];
+        if (!text || !text.trim()) return;
+        setSubmitting(true); setMsg(''); setErr('');
+        try {
+            const { replyComment } = await import('../services/api');
+            await replyComment(commentId, text);
+            setMsg('✅ Reply posted successfully.');
+            setReplyText(prev => ({ ...prev, [commentId]: '' }));
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Failed to reply.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleResolve = async (commentId) => {
+        setMsg(''); setErr('');
+        try {
+            const { resolveComment } = await import('../services/api');
+            await resolveComment(commentId);
+            setMsg('✅ Thread resolved and finalized.');
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Failed to resolve.');
+        }
+    };
+
+    if (loading) return <Spinner />;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Private Athlete Communications</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Secure 1-to-1 notes and directives visible ONLY to the specific player and yourself.</p>
+            </div>
+
+            <Alert msg={msg} type="success" />
+            <Alert msg={err} type="error" />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                {/* Send Comment Form */}
+                <form onSubmit={handleSendComment} className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-dim)', paddingBottom: '8px', marginBottom: '8px' }}>
+                        ✍️ SEND NOTE TO ATHLETE
+                    </h3>
+                    <div className="form-group">
+                        <label>Select Player</label>
+                        <select className="glass-input" value={selectedPlayer} onChange={e => setSelectedPlayer(e.target.value)} style={{ width: '100%', background: 'var(--bg-deep)' }} required>
+                            <option value="">-- Choose Athlete --</option>
+                            {players.map(p => <option key={p.player_id} value={p.player_id}>{p.name} ({p.position})</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Comment Message</label>
+                        <textarea className="glass-input" rows="4" placeholder="Enter private note..." value={newComment} onChange={e => setNewComment(e.target.value)} style={{ width: '100%', resize: 'none' }} required></textarea>
+                    </div>
+                    <button type="submit" className="glass-button primary-btn" style={{ width: '100%', height: '48px', fontWeight: 800 }} disabled={submitting}>
+                        {submitting ? 'SENDING...' : '✉️ SEND PRIVATE COMMENT'}
+                    </button>
+                </form>
+
+                {/* Comments Stream */}
+                <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', gridColumn: 'span 2' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-secondary)', borderBottom: '1px solid var(--border-dim)', paddingBottom: '8px', marginBottom: '16px' }}>
+                        💬 SECURE COMMUNICATIONS THREADS
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '520px', overflowY: 'auto', paddingRight: '8px' }}>
+                        {comments.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                No communications history on file.
+                            </div>
+                        ) : comments.map((c) => (
+                            <div key={c.comment_id} className="glass-card" style={{ padding: '16px', borderRadius: '12px', borderLeft: `4px solid ${c.status === 'Resolved' ? 'var(--accent-success)' : 'var(--accent-warning)'}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <strong style={{ color: 'var(--text-main)' }}>Player: {c.player_name}</strong>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <span style={{
+                                            padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
+                                            background: c.status === 'Resolved' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                            color: c.status === 'Resolved' ? '#4ade80' : '#fbbf24',
+                                            border: `1px solid ${c.status === 'Resolved' ? '#22c55e' : '#f59e0b'}`
+                                        }}>{c.status}</span>
+                                        {c.status === 'Active' && (
+                                            <button className="glass-button" style={{ padding: '2px 8px', fontSize: '0.65rem', borderColor: 'var(--accent-success)', color: 'var(--accent-success)' }} onClick={() => handleResolve(c.comment_id)}>
+                                                Resolve
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                                        <span>Sender: {c.sender_role.toUpperCase()}</span>
+                                        <span>{new Date(c.created_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{c.message}</p>
+                                </div>
+                                
+                                {c.coach_reply_message ? (
+                                    <div style={{ marginLeft: '24px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '4px' }}>
+                                            <strong>Coach (You) Reply:</strong>
+                                            <span>{new Date(c.coach_reply_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{c.coach_reply_message}</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px', marginLeft: '24px' }}>
+                                        <input type="text" className="glass-input" placeholder="Type reply..." value={replyText[c.comment_id] || ''} onChange={e => setReplyText({ ...replyText, [c.comment_id]: e.target.value })} style={{ flex: 1, fontSize: '0.85rem' }} />
+                                        <button className="glass-button primary-btn" style={{ padding: '6px 16px', fontSize: '0.8rem' }} onClick={() => handleReply(c.comment_id)}>Reply</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
