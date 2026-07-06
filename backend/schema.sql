@@ -10,16 +10,21 @@ CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'director', 'manager', 'coach', 'captain', 'player') NOT NULL,
+    role ENUM('director', 'manager', 'coach', 'captain', 'player') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ─── ROLE PROFILE TABLES ─────────────────────────────────────────────────────
 CREATE TABLE sports (
     sport_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
+    sport_name VARCHAR(255) UNIQUE NOT NULL,
+    sport_type VARCHAR(255) NOT NULL,
+    metrics VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_by INT,
+    status ENUM('Active', 'Inactive') DEFAULT 'Active',
     teams_count INT DEFAULT 0,
-    status ENUM('Active', 'Inactive') DEFAULT 'Active'
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 CREATE TABLE sports_director (
@@ -180,6 +185,7 @@ CREATE TABLE player (
     experience_years INT DEFAULT 0,
     achievements TEXT,
     remarks TEXT,
+    profile_photo VARCHAR(255) DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (managed_by_captain_id) REFERENCES captain(captain_id) ON DELETE SET NULL
 );
@@ -225,7 +231,7 @@ CREATE TABLE player_reports (
     player_id INT NOT NULL,
     captain_id INT NOT NULL,
     date DATE NOT NULL,
-    attendance ENUM('Present', 'Absent') NOT NULL,
+    attendance ENUM('Present', 'Absent', 'Late', 'Training', 'Medical Leave') NOT NULL,
     discipline INT NOT NULL CHECK (discipline BETWEEN 1 AND 10),
     training_hours DECIMAL(4,2) DEFAULT 0,
     notes TEXT,
@@ -242,7 +248,7 @@ CREATE TABLE captain_reports (
     captain_id INT NOT NULL,
     coach_id INT NOT NULL,
     date DATE NOT NULL,
-    attendance ENUM('Present', 'Absent') NOT NULL,
+    attendance ENUM('Present', 'Absent', 'Late', 'Training', 'Medical Leave') NOT NULL,
     discipline ENUM('Good', 'Average', 'Poor') NOT NULL,
     training_hours DECIMAL(4,2) DEFAULT 0,
     strategy_rt DECIMAL(4,2) DEFAULT 0,
@@ -253,6 +259,41 @@ CREATE TABLE captain_reports (
     UNIQUE KEY unique_captain_daily (captain_id, coach_id, date),
     FOREIGN KEY (captain_id) REFERENCES captain(captain_id) ON DELETE CASCADE,
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id) ON DELETE CASCADE
+);
+
+CREATE TABLE player_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    captain_id INT NOT NULL,
+    coach_id INT NOT NULL,
+    player_name VARCHAR(255) NOT NULL,
+    player_email VARCHAR(255) UNIQUE NOT NULL,
+    player_password_hash VARCHAR(255) NOT NULL,
+    gender ENUM('Male', 'Female', 'Other'),
+    age INT,
+    sport_category VARCHAR(100),
+    position VARCHAR(100),
+    status ENUM('Pending', 'Approved', 'Rejected', 'Duplicate Removed') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (captain_id) REFERENCES captain(captain_id) ON DELETE CASCADE,
+    FOREIGN KEY (coach_id) REFERENCES coach(coach_id) ON DELETE CASCADE
+);
+
+CREATE TABLE player_comments (
+    comment_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_id INT NOT NULL,
+    coach_id INT NOT NULL,
+    captain_id INT NOT NULL,
+    sender_role ENUM('player', 'coach', 'captain') NOT NULL,
+    message TEXT NOT NULL,
+    coach_reply_message TEXT,
+    coach_reply_date TIMESTAMP NULL DEFAULT NULL,
+    captain_reply_message TEXT,
+    captain_reply_date TIMESTAMP NULL DEFAULT NULL,
+    status ENUM('Active', 'Resolved') DEFAULT 'Active',
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_id) REFERENCES player(player_id) ON DELETE CASCADE,
+    FOREIGN KEY (coach_id) REFERENCES coach(coach_id) ON DELETE CASCADE,
+    FOREIGN KEY (captain_id) REFERENCES captain(captain_id) ON DELETE CASCADE
 );
 
 CREATE TABLE audit_logs (
@@ -273,8 +314,8 @@ CREATE TABLE audit_logs (
 SET @pw = '$2b$10$DGBGW4IhiweWdbakrjNZWux9JBC9aqMqjuD1b8OqiC2OE6Zt15Z8a';
 
 -- ─── USERS ───────────────────────────────────────────────────────────────────
-INSERT INTO users (email, password_hash, role) VALUES ('admin@sportnet.com', @pw, 'admin'); -- 1
-INSERT INTO users (email, password_hash, role) VALUES ('director@sportnet.com', @pw, 'director'); -- 2
+INSERT INTO users (email, password_hash, role) VALUES ('director1@sportnet.com', @pw, 'director'); -- 1
+INSERT INTO users (email, password_hash, role) VALUES ('director2@sportnet.com', @pw, 'director'); -- 2
 INSERT INTO users (email, password_hash, role) VALUES ('manager@sportnet.com', @pw, 'manager'); -- 3
 INSERT INTO users (email, password_hash, role) VALUES ('coach1@sportnet.com', @pw, 'coach'); -- 4
 INSERT INTO users (email, password_hash, role) VALUES ('coach2@sportnet.com', @pw, 'coach'); -- 5
@@ -287,7 +328,8 @@ INSERT INTO users (email, password_hash, role) VALUES ('player4@sportnet.com', @
 INSERT INTO users (email, password_hash, role) VALUES ('player5@sportnet.com', @pw, 'player'); -- 12
 
 -- ─── PROFILES ─────────────────────────────────────────────────────────────────
-INSERT INTO sports_director (user_id, name, gender, age) VALUES (2, 'Rajapaksa Fernando', 'Male', 55);
+INSERT INTO sports_director (user_id, name, gender, age) VALUES (1, 'Rajapaksa Fernando', 'Male', 55);
+INSERT INTO sports_director (user_id, name, gender, age) VALUES (2, 'Priya Jayasuriya', 'Female', 48);
 
 INSERT INTO sport_manager (user_id, director_id, name, gender, age, qualification) 
 VALUES (3, 1, 'Chamara Silva', 'Male', 42, 'MBA Sports Management');
@@ -312,6 +354,13 @@ VALUES (9, 1, 'Kasun Bandara', 'Male', 21, 'Striker', 'Intermediate', 6, 60.00);
 
 INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, position, skill_level, discipline, total_score)
 VALUES (10, 1, 'Amal Dissanayake', 'Male', 19, 'Goalkeeper', 'Beginner', 7, 55.00);
+
+-- ─── SEED SPORTS ──────────────────────────────────────────────────────────────
+INSERT INTO sports (sport_name, sport_type, metrics, description, status) VALUES
+('Cricket', 'Team', 'Batting Avg, Strike Rate', 'Standard cricket sport category with batting and bowling tracking.', 'Active'),
+('Football', 'Team', 'Goals, Assists', 'Association football sport category tracking goal scores and assists.', 'Active'),
+('Volleyball', 'Team', 'Blocks, Serves', 'Volleyball sport category tracking blocks and serves metrics.', 'Active'),
+('Athletics', 'Individual', 'Speed, Distance', 'Track and field athletics tracking speed and distance.', 'Active');
 
 -- ─── REPORTS ──────────────────────────────────────────────────────────────────
 INSERT INTO player_reports (player_id, captain_id, date, attendance, discipline, training_hours, status) VALUES

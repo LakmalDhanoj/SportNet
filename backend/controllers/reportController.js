@@ -286,7 +286,7 @@ exports.submitCaptainReport = async (req, res) => {
 exports.getDirectorOverview = async (req, res) => {
     try {
         const { role } = req.user;
-        if (!['director', 'admin'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
+        if (role !== 'director') return res.status(403).json({ message: 'Forbidden' });
 
         const [[{ total_submitted }]] = await db.query(
             "SELECT COUNT(*) AS total_submitted FROM player_reports"
@@ -323,7 +323,7 @@ exports.getDirectorOverview = async (req, res) => {
 exports.getManagerOverview = async (req, res) => {
     try {
         const { role } = req.user;
-        if (!['manager', 'admin', 'director'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
+        if (!['manager', 'director'].includes(role)) return res.status(403).json({ message: 'Forbidden' });
 
         const [coaches] = await db.query(
             `SELECT c.coach_id, c.name, c.discipline, c.evaluation_sc,
@@ -349,7 +349,7 @@ exports.getPlayerReports = async (req, res) => {
         const { user_id, role } = req.user;
         if (role !== 'player') return res.status(403).json({ message: 'Forbidden' });
 
-        const [playerRows] = await db.query('SELECT player_id, name FROM player WHERE user_id = ?', [user_id]);
+        const [playerRows] = await db.query('SELECT * FROM player WHERE user_id = ?', [user_id]);
         if (!playerRows.length) return res.status(404).json({ message: 'Player profile not found' });
 
         const [reports] = await db.query(

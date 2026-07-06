@@ -23,6 +23,49 @@ exports.createUser = async (req, res) => {
             return res.status(400).json({ message: 'email, password, role, and name are required' });
         }
 
+        // Validate and lookup relationships before creating the user row to prevent orphans
+        let director_id = null;
+        if (req.user && req.user.role === 'director') {
+            const [dirRows] = await db.query('SELECT director_id FROM sports_director WHERE user_id = ?', [req.user.user_id]);
+            if (dirRows.length > 0) {
+                director_id = dirRows[0].director_id;
+            }
+        }
+
+        if (role === 'manager') {
+            if (req.user && req.user.role !== 'director') {
+                return res.status(403).json({ message: 'Only directors can add managers' });
+            }
+        }
+
+        let finalSportCategory = null;
+
+        if (role === 'coach') {
+            if (managed_by_id) {
+                const [mgrRows] = await db.query('SELECT sport_specialization FROM sport_manager WHERE manager_id = ?', [managed_by_id]);
+                if (mgrRows.length === 0) {
+                    return res.status(400).json({ message: 'Assigned sports manager does not exist' });
+                }
+                finalSportCategory = mgrRows[0].sport_specialization;
+            }
+        } else if (role === 'captain') {
+            if (managed_by_id) {
+                const [coachRows] = await db.query('SELECT sport_category FROM coach WHERE coach_id = ?', [managed_by_id]);
+                if (coachRows.length === 0) {
+                    return res.status(400).json({ message: 'Assigned coach does not exist' });
+                }
+                finalSportCategory = coachRows[0].sport_category;
+            }
+        } else if (role === 'player') {
+            if (managed_by_id) {
+                const [capRows] = await db.query('SELECT sport_category FROM captain WHERE captain_id = ?', [managed_by_id]);
+                if (capRows.length === 0) {
+                    return res.status(400).json({ message: 'Assigned captain does not exist' });
+                }
+                finalSportCategory = capRows[0].sport_category;
+            }
+        }
+
         const passwordHash = await bcrypt.hash(password, 10);
         const [result] = await db.query(
             'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
@@ -34,30 +77,35 @@ exports.createUser = async (req, res) => {
             case 'director':
                 await db.query('INSERT INTO sports_director (user_id, name, gender, age) VALUES (?, ?, ?, ?)', [user_id, name, gender, age]);
                 break;
-            case 'manager':
+            case 'manager': {
+                const { sport_specialization } = req.body;
                 await db.query(
-                    'INSERT INTO sport_manager (user_id, director_id, name, gender, age, qualification) VALUES (?, ?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age, qualification]
+                    'INSERT INTO sport_manager (user_id, director_id, name, gender, age, qualification, sport_specialization) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [user_id, director_id, name, gender, age, qualification, sport_specialization || null]
                 );
                 break;
-            case 'coach':
+            }
+            case 'coach': {
                 await db.query(
-                    'INSERT INTO coach (user_id, manager_id, name, gender, age, qualification) VALUES (?, ?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age, qualification]
+                    'INSERT INTO coach (user_id, manager_id, name, gender, age, qualification, sport_category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [user_id, managed_by_id || null, name, gender, age, qualification, finalSportCategory]
                 );
                 break;
-            case 'captain':
+            }
+            case 'captain': {
                 await db.query(
-                    'INSERT INTO captain (user_id, managed_by_coach_id, name, gender, age) VALUES (?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age]
+                    'INSERT INTO captain (user_id, managed_by_coach_id, name, gender, age, sport_category) VALUES (?, ?, ?, ?, ?, ?)',
+                    [user_id, managed_by_id || null, name, gender, age, finalSportCategory]
                 );
                 break;
-            case 'player':
+            }
+            case 'player': {
                 await db.query(
-                    'INSERT INTO player (user_id, managed_by_captain_id, name, gender, age) VALUES (?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age]
+                    'INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, sport_category, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [user_id, managed_by_id || null, name, gender, age, finalSportCategory, 'Approved']
                 );
                 break;
+            }
             default:
                 break;
         }
@@ -98,7 +146,10 @@ exports.getMyPlayers = async (req, res) => {
         if (!captainRows.length) return res.status(404).json({ message: 'Captain profile not found' });
 
         const [players] = await db.query(
-            'SELECT player_id, name, gender, age, skill_level, discipline, total_score FROM player WHERE managed_by_captain_id = ?',
+            `SELECT p.player_id, p.name, p.gender, p.age, p.skill_level, p.discipline, p.total_score, p.approval_status, p.position, p.sport_category, u.email 
+             FROM player p
+             JOIN users u ON p.user_id = u.user_id
+             WHERE p.managed_by_captain_id = ?`,
             [captainRows[0].captain_id]
         );
         res.json({ players });
@@ -170,9 +221,10 @@ exports.getAllPlayers = async (req, res) => {
     try {
         const [players] = await db.query(
             `SELECT p.player_id, p.name, p.gender, p.age, p.skill_level,
-                    p.discipline, p.total_score, p.approval_status,
-                    c.name AS captain_name
+                    p.discipline, p.total_score, p.approval_status, p.position, p.sport_category,
+                    c.name AS captain_name, u.email
              FROM player p
+             JOIN users u ON p.user_id = u.user_id
              LEFT JOIN captain c ON c.captain_id = p.managed_by_captain_id`
         );
         res.json({ players });
@@ -185,7 +237,7 @@ exports.getAllPlayers = async (req, res) => {
 // Get list of coaches (dropdown for assigning captain)
 exports.getCoachList = async (req, res) => {
     try {
-        const [coaches] = await db.query('SELECT coach_id, name FROM coach ORDER BY name');
+        const [coaches] = await db.query('SELECT coach_id, name, sport_category FROM coach ORDER BY name');
         res.json({ coaches });
     } catch (error) {
         console.error(error);
@@ -196,7 +248,7 @@ exports.getCoachList = async (req, res) => {
 // Get list of captains (dropdown for assigning player)
 exports.getCaptainList = async (req, res) => {
     try {
-        const [captains] = await db.query('SELECT captain_id, name FROM captain ORDER BY name');
+        const [captains] = await db.query('SELECT captain_id, name, sport_category FROM captain ORDER BY name');
         res.json({ captains });
     } catch (error) {
         console.error(error);
@@ -218,7 +270,7 @@ exports.getDirectorList = async (req, res) => {
 // Get list of managers (dropdown)
 exports.getManagerList = async (req, res) => {
     try {
-        const [managers] = await db.query('SELECT manager_id, name FROM sport_manager ORDER BY name');
+        const [managers] = await db.query('SELECT manager_id, name, sport_specialization FROM sport_manager ORDER BY name');
         res.json({ managers });
     } catch (error) {
         console.error(error);
@@ -250,7 +302,10 @@ exports.getPendingPlayers = async (req, res) => {
         if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
         
         const [players] = await db.query(
-            "SELECT player_id, name, gender, age, approval_status FROM player WHERE approval_status = 'Pending'"
+            `SELECT p.player_id, p.name, p.gender, p.age, p.approval_status, p.position, p.sport_category, u.email 
+             FROM player p
+             JOIN users u ON p.user_id = u.user_id
+             WHERE p.approval_status = 'Pending'`
         );
         res.json({ players });
     } catch (error) {
@@ -288,6 +343,12 @@ exports.coachAddPlayer = async (req, res) => {
         const { email, password, name, gender, age, captain_id } = req.body;
         if (!email || !password || !name || !captain_id) {
             return res.status(400).json({ message: 'Email, password, name, and captain ID are required' });
+        }
+
+        const lowerEmail = email.toLowerCase();
+        const isCampusEmail = lowerEmail.endsWith('.edu') || lowerEmail.endsWith('.ac.lk') || lowerEmail.endsWith('.edu.lk') || lowerEmail.endsWith('@sportnet.com');
+        if (!isCampusEmail) {
+            return res.status(400).json({ message: 'Please use a valid campus email address (ending with .edu, .ac.lk, or .edu.lk).' });
         }
         
         const passwordHash = await bcrypt.hash(password, 10);
@@ -332,12 +393,44 @@ exports.getMyTeammates = async (req, res) => {
         }
         
         const [teammates] = await db.query(
-            "SELECT player_id, name, position, skill_level FROM player WHERE managed_by_captain_id = ? AND user_id != ?",
+            `SELECT p.player_id, p.name, p.age, p.gender, p.position, p.skill_level, u.email 
+             FROM player p
+             JOIN users u ON p.user_id = u.user_id
+             WHERE p.managed_by_captain_id = ? AND p.user_id != ?`,
             [playerRows[0].managed_by_captain_id, user_id]
         );
         res.json({ teammates });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.uploadProfilePhoto = async (req, res) => {
+    try {
+        const { user_id, role } = req.user;
+        if (role !== 'player') {
+            return res.status(403).json({ message: 'Only players can upload profile photos.' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded.' });
+        }
+
+        const photoPath = `uploads/${req.file.filename}`;
+
+        await db.query(
+            'UPDATE player SET profile_photo = ? WHERE user_id = ?',
+            [photoPath, user_id]
+        );
+
+        res.json({
+            message: 'Profile photo updated successfully.',
+            photo_photo: photoPath,
+            photoUrl: `http://localhost:5000/${photoPath}`
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ message: 'Server error uploading profile photo.' });
     }
 };

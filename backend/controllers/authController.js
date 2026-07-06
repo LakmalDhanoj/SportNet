@@ -4,9 +4,15 @@ const db = require('../config/db');
 
 exports.registerPlayer = async (req, res) => {
     try {
-        const { email, password, name, gender, age } = req.body;
+        const { email, password, name, gender, age, sport_category, position } = req.body;
         if (!email || !password || !name) {
             return res.status(400).json({ message: 'Email, password, and name are required' });
+        }
+
+        const lowerEmail = email.toLowerCase();
+        const isCampusEmail = lowerEmail.endsWith('.edu') || lowerEmail.endsWith('.ac.lk') || lowerEmail.endsWith('.edu.lk') || lowerEmail.endsWith('@sportnet.com');
+        if (!isCampusEmail) {
+            return res.status(400).json({ message: 'Please use a valid campus email address (ending with .edu, .ac.lk, or .edu.lk).' });
         }
 
         const [existing] = await db.query('SELECT user_id FROM users WHERE email = ?', [email]);
@@ -25,8 +31,8 @@ exports.registerPlayer = async (req, res) => {
             );
             
             await connection.query(
-                'INSERT INTO player (user_id, name, gender, age, approval_status) VALUES (?, ?, ?, ?, ?)',
-                [userResult.insertId, name, gender || null, age || null, 'Pending']
+                'INSERT INTO player (user_id, name, gender, age, sport_category, position, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [userResult.insertId, name, gender || null, age || null, sport_category || null, position || null, 'Pending']
             );
             await connection.commit();
             res.status(201).json({ message: 'Registration successful. Waiting for coach approval.' });
@@ -52,6 +58,19 @@ exports.login = async (req, res) => {
         }
 
         const user = users[0];
+
+        if (role === 'player') {
+            const [playerRows] = await db.query('SELECT approval_status FROM player WHERE user_id = ?', [user.user_id]);
+            if (playerRows.length > 0) {
+                const status = playerRows[0].approval_status;
+                if (status === 'Pending') {
+                    return res.status(403).json({ message: 'Your registration is pending approval by the coach.' });
+                }
+                if (status === 'Rejected') {
+                    return res.status(403).json({ message: 'Your registration request has been rejected by the coach.' });
+                }
+            }
+        }
         
         // Use bcrypt to check password if needed, for simplicity during dev assuming it works if passwords match hash or plain
         const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -92,8 +111,6 @@ exports.getProfile = async (req, res) => {
         let tableName = '';
 
         switch (role) {
-            case 'admin':
-                return res.json({ message: 'Admin Profile', user: req.user });
             case 'director':
                 tableName = 'sports_director';
                 break;

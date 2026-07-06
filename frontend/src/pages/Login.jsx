@@ -1,14 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { forgotKey } from '../services/api';
+import api, { forgotKey, getPublicSports } from '../services/api';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('admin');
+    const [role, setRole] = useState('director');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+
+    // Landing metrics state
+    const [sports, setSports] = useState([]);
+    const [sportsLoading, setSportsLoading] = useState(true);
+
+    useEffect(() => {
+        getPublicSports()
+            .then(r => {
+                setSports(r.data.sports || []);
+                setSportsLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setSportsLoading(false);
+            });
+    }, []);
 
     // Recover / Help Modal States
     const [forgotModalOpen, setForgotModalOpen] = useState(false);
@@ -16,7 +32,7 @@ const Login = () => {
     
     // Forgot Key Form States
     const [forgotEmail, setForgotEmail] = useState('');
-    const [forgotRole, setForgotRole] = useState('admin');
+    const [forgotRole, setForgotRole] = useState('director');
     const [forgotLoading, setForgotLoading] = useState(false);
     const [forgotError, setForgotError] = useState('');
     const [recoveredKey, setRecoveredKey] = useState('');
@@ -52,8 +68,7 @@ const Login = () => {
     };
 
     const roles = [
-        { id: 'admin', label: 'Admin', icon: '🛡️' },
-        { id: 'director', label: 'Director', icon: '🏛️' },
+        { id: 'director', label: 'Director', icon: '🏗️' },
         { id: 'manager', label: 'Manager', icon: '💼' },
         { id: 'coach', label: 'Coach', icon: '📋' },
         { id: 'captain', label: 'Captain', icon: '🎖️' },
@@ -61,8 +76,68 @@ const Login = () => {
     ];
 
     return (
-        <div className="login-bg">
-            <div className="glass-panel login-card fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-dim)' }}>
+        <div className="login-bg" style={{ display: 'flex', gap: '32px', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '40px', flexWrap: 'wrap', maxWidth: '1200px', margin: '0 auto' }}>
+            
+            {/* LEFT SIDE: Landing Page Sports Metrics Panel */}
+            <div className="glass-panel fade-in" style={{ flex: 1.2, minWidth: '320px', maxWidth: '600px', padding: '40px', borderRadius: '24px', background: 'var(--bg-surface)', border: '1px solid var(--border-dim)', alignSelf: 'stretch', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ marginBottom: '24px', borderBottom: '1px solid var(--border-dim)', paddingBottom: '16px' }}>
+                    <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        🏆 LIVE SPORT METRICS
+                    </h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500, marginTop: '4px' }}>Real-time division updates and performance metrics configured by directors.</p>
+                </div>
+
+                {sportsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--accent-primary)', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                        🔄 LOADING PLATFORM METRICS...
+                    </div>
+                ) : sports.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                        No active sports configured at this time.
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, justifyContent: 'center' }}>
+                        {sports.map(s => {
+                            let sportIcon = '⚽';
+                            if (s.sport_name === 'Cricket') sportIcon = '🏏';
+                            else if (s.sport_name === 'Volleyball') sportIcon = '🏐';
+                            else if (s.sport_name === 'Basketball') sportIcon = '🏀';
+                            else if (s.sport_name === 'Athletics') sportIcon = '🏃';
+                            
+                            return (
+                                <div key={s.sport_id} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '4px solid var(--accent-primary)', background: 'var(--bg-surface-alt)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <span style={{ fontSize: '1.8rem' }}>{sportIcon}</span>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>{s.sport_name.toUpperCase()}</h3>
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>{s.sport_type}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 700 }}>ATTENDANCE RATE</span>
+                                            <strong style={{ fontSize: '1.2rem', color: 'var(--accent-success)', fontWeight: 900 }}>{s.attendanceRate}%</strong>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderTop: '1px solid var(--border-dim)', paddingTop: '10px', fontSize: '0.85rem' }}>
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>Athletes Assigned:</span>{' '}
+                                            <strong style={{ color: 'var(--text-main)' }}>{s.playersCount} Players</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>{s.customMetricName || s.metrics}:</span>{' '}
+                                            <strong style={{ color: 'var(--accent-primary)' }}>{s.customMetricValue || 0}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* RIGHT SIDE: System Sign In Box */}
+            <div className="glass-panel login-card fade-in" style={{ flex: 1, minWidth: '320px', maxWidth: '460px', padding: '40px', borderRadius: '24px', background: 'var(--bg-surface)', border: '1px solid var(--border-dim)', margin: 0 }}>
                 <div className="login-header">
                     <div style={{ width: '64px', height: '64px', background: 'var(--accent-primary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 20px', boxShadow: 'var(--glow-primary)' }}>🏆</div>
                     <h1 style={{ fontSize: '2.8rem', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--text-main)' }}>SportNet</h1>
@@ -143,8 +218,6 @@ const Login = () => {
                     <div className="login-footer" style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '16px', fontWeight: 600 }}>
                         <a href="#" onClick={(e) => { e.preventDefault(); setForgotModalOpen(true); }} style={{ color: 'inherit', textDecoration: 'none' }}>FORGOT KEY</a>
                         <span style={{ opacity: 0.3 }}>|</span>
-                        <a href="/register" style={{ color: 'inherit', textDecoration: 'none' }}>REGISTER AS PLAYER</a>
-                        <span style={{ opacity: 0.3 }}>|</span>
                         <a href="#" onClick={(e) => { e.preventDefault(); setHelpModalOpen(true); }} style={{ color: 'inherit', textDecoration: 'none' }}>SECURE HELP</a>
                     </div>
                 </form>
@@ -202,7 +275,6 @@ const Login = () => {
                                         className="glass-input"
                                         style={{ width: '100%', background: 'var(--bg-deep)', color: 'var(--text-main)', cursor: 'pointer' }}
                                     >
-                                        <option value="admin">Admin</option>
                                         <option value="director">Director</option>
                                         <option value="manager">Manager</option>
                                         <option value="coach">Coach</option>
@@ -310,8 +382,8 @@ const Login = () => {
                                         </thead>
                                         <tbody>
                                             {[
-                                                { label: 'Admin', icon: '🛡️', email: 'admin@sportnet.com', role: 'admin' },
-                                                { label: 'Director', icon: '🏛️', email: 'director@sportnet.com', role: 'director' },
+                                                { label: 'Director', icon: '🏗️', email: 'director1@sportnet.com', role: 'director' },
+                                                { label: 'Director 2', icon: '🏗️', email: 'director2@sportnet.com', role: 'director' },
                                                 { label: 'Manager', icon: '💼', email: 'manager@sportnet.com', role: 'manager' },
                                                 { label: 'Coach', icon: '📋', email: 'coach1@sportnet.com', role: 'coach' },
                                                 { label: 'Captain', icon: '🎖️', email: 'captain1@sportnet.com', role: 'captain' },

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getPlayerReports } from '../services/api';
 
 const Spinner = () => (
@@ -30,6 +30,23 @@ const getDisciplineLabel = (score) => {
     if (score >= 7) return 'Good';
     if (score >= 5) return 'Average';
     return 'Poor';
+};
+
+// Alert banner for success / error feedback
+const Alert = ({ msg, type }) => {
+    if (!msg) return null;
+    const isSuccess = type === 'success';
+    return (
+        <div style={{
+            padding: '12px 18px', borderRadius: '10px', marginBottom: '16px',
+            fontSize: '0.85rem', fontWeight: 600,
+            background: isSuccess ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+            border: `1px solid ${isSuccess ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
+            color: isSuccess ? '#34d399' : '#f87171',
+        }}>
+            {msg}
+        </div>
+    );
 };
 
 // ─── VIEW 1: PERFORMANCE OVERVIEW ─────────────────────────────────────────────
@@ -632,6 +649,239 @@ export const MyTeammates = () => {
                         ))}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    );
+};
+
+export const PlayerProfileView = () => {
+    const [data, setData] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [newComment, setNewComment] = useState('');
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editText, setEditText] = useState('');
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const loadData = useCallback(async () => {
+        try {
+            const { getPlayerReports, getComments } = await import('../services/api');
+            const [pRes, cRes] = await Promise.all([
+                getPlayerReports(),
+                getComments()
+            ]);
+            setData(pRes.data);
+            setComments(cRes.data.comments || []);
+        } catch (ex) {
+            console.error(ex);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const handleSendComment = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+        setSaving(true); setMsg(''); setErr('');
+        try {
+            const { addComment } = await import('../services/api');
+            await addComment({ message: newComment });
+            setMsg('✅ Message sent to Coach and Captain successfully.');
+            setNewComment('');
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Error posting message.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleEditComment = async (commentId) => {
+        if (!editText.trim()) return;
+        setSaving(true); setMsg(''); setErr('');
+        try {
+            const { editComment } = await import('../services/api');
+            await editComment(commentId, { message: editText });
+            setMsg('✅ Message edited successfully.');
+            setEditingCommentId(null);
+            setEditText('');
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Error editing message.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        if (!window.confirm('Delete this message permanently?')) return;
+        setMsg(''); setErr('');
+        try {
+            const { deleteComment } = await import('../services/api');
+            await deleteComment(commentId);
+            setMsg('✅ Message deleted successfully.');
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Error deleting message.');
+        }
+    };
+
+    const handlePhotoChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setSaving(true); setMsg(''); setErr('');
+        const formData = new FormData();
+        formData.append('photo', file);
+        try {
+            const { uploadProfilePhoto } = await import('../services/api');
+            await uploadProfilePhoto(formData);
+            setMsg('✅ Profile photo updated successfully.');
+            loadData();
+        } catch (ex) {
+            setErr(ex.response?.data?.message || 'Error uploading profile photo.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <Spinner />;
+
+    const player = data?.player || {};
+    const formattedPlayerId = `P${String(player.player_id || 1).padStart(3, '0')}`;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>My Profile Overview</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Separate personal details & private communications registry.</p>
+            </div>
+
+            <Alert msg={msg} type="success" />
+            <Alert msg={err} type="error" />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                {/* 1. Identity & Physical Data Card */}
+                <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: 'fit-content' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-dim)', paddingBottom: '8px', marginBottom: '8px' }}>
+                        👤 PERSONAL INFO
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', margin: '16px 0', borderBottom: '1px solid var(--border-dim)', paddingBottom: '16px' }}>
+                        <div style={{
+                            width: '120px', height: '120px', borderRadius: '50%', overflow: 'hidden',
+                            border: '3px solid var(--accent-primary)', boxShadow: 'var(--glow-primary)',
+                            background: 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '4.5rem'
+                        }}>
+                            {player.profile_photo ? (
+                                <img src={`http://localhost:5000/${player.profile_photo}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                '👤'
+                            )}
+                        </div>
+                        <label htmlFor="profile-photo-file" className="glass-button" style={{ fontSize: '0.75rem', padding: '6px 12px', cursor: 'pointer', display: 'inline-block' }}>
+                            📷 Update Photo
+                        </label>
+                        <input type="file" id="profile-photo-file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Player ID</span><span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{formattedPlayerId}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Full Name</span><span style={{ fontWeight: 700 }}>{player.name}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Gender / Age</span><span style={{ fontWeight: 700 }}>{player.gender || 'Male'} / {player.age || 20}</span></div>
+                        <div style={{ borderTop: '1px solid var(--border-dim)', margin: '4px 0' }}></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sport Domain</span><span style={{ fontWeight: 700, color: 'var(--accent-secondary)' }}>{player.sport_category || 'Football'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Strategic Position</span><span style={{ fontWeight: 700 }}>{player.position || 'Forward'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Skill Classification</span><span style={{ fontWeight: 800, color: 'var(--accent-warning)', fontSize: '0.75rem', textTransform: 'uppercase' }}>{player.skill_level || 'Advanced'}</span></div>
+                        <div style={{ borderTop: '1px solid var(--border-dim)', margin: '4px 0' }}></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Fitness Rating</span><span style={{ fontWeight: 700 }}>{player.fitness_level || 'High'}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Injury Registry</span><span style={{ fontWeight: 700, color: player.injury_status === 'Fit' ? 'var(--accent-success)' : 'var(--accent-danger)' }}>{player.injury_status || 'Fit'}</span></div>
+                    </div>
+                </div>
+
+                {/* 2. Private Comments Thread Box */}
+                <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', gridColumn: 'span 2' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-secondary)', borderBottom: '1px solid var(--border-dim)', paddingBottom: '8px', marginBottom: '16px' }}>
+                        💬 PRIVATE COMMENT MODULE
+                    </h3>
+                    
+                    {/* Add note form */}
+                    <form onSubmit={handleSendComment} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+                        <input type="text" className="glass-input" placeholder="Post a small comment to your coach..." value={newComment} onChange={e => setNewComment(e.target.value)} style={{ flex: 1 }} required />
+                        <button type="submit" className="glass-button primary-btn" style={{ padding: '0 24px', fontWeight: 800 }} disabled={saving}>
+                            {saving ? 'SENDING...' : '✉️ POST'}
+                        </button>
+                    </form>
+
+                    {/* Messages list */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingRight: '8px' }}>
+                        {comments.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                No comment threads on file. Type a message above to start private communications with your Coach & Captain.
+                            </div>
+                        ) : comments.map((c) => (
+                            <div key={c.comment_id} className="glass-card" style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg-deep)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <span style={{
+                                            padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
+                                            background: c.sender_role === 'player' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                            color: c.sender_role === 'player' ? '#60a5fa' : '#fbbf24',
+                                            border: `1px solid ${c.sender_role === 'player' ? '#3b82f6' : '#f59e0b'}`
+                                        }}>{c.sender_role === 'player' ? 'You' : 'Coach'}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                            {new Date(c.created_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    {c.sender_role === 'player' && (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button className="glass-button" style={{ padding: '2px 8px', fontSize: '0.65rem' }} onClick={() => { setEditingCommentId(c.comment_id); setEditText(c.message); }}>
+                                                Edit
+                                            </button>
+                                            <button className="glass-button" style={{ padding: '2px 8px', fontSize: '0.65rem', color: 'var(--accent-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => handleDeleteComment(c.comment_id)}>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {editingCommentId === c.comment_id ? (
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                        <input type="text" className="glass-input" value={editText} onChange={e => setEditText(e.target.value)} style={{ flex: 1, fontSize: '0.85rem' }} />
+                                        <button className="glass-button primary-btn" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleEditComment(c.comment_id)}>Save</button>
+                                        <button className="glass-button" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setEditingCommentId(null)}>Cancel</button>
+                                    </div>
+                                ) : (
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{c.message}</p>
+                                )}
+
+                                {c.coach_reply_message && (
+                                    <div style={{ marginTop: '12px', marginLeft: '16px', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', borderLeft: '3px solid var(--accent-primary)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '4px' }}>
+                                            <strong>Coach Reply:</strong>
+                                            <span>{new Date(c.coach_reply_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{c.coach_reply_message}</p>
+                                    </div>
+                                )}
+
+                                {c.captain_reply_message && (
+                                    <div style={{ marginTop: '12px', marginLeft: '16px', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', borderLeft: '3px solid var(--accent-success)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--accent-success)', marginBottom: '4px' }}>
+                                            <strong>Captain Reply:</strong>
+                                            <span>{new Date(c.captain_reply_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{c.captain_reply_message}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
