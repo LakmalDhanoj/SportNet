@@ -390,3 +390,138 @@ export const CaptainAttendanceEntry = () => {
         </div>
     );
 };
+
+// ─── COACH: Player Attendance Review (Edit, Approve, Reject) ────────────────
+export const PlayerReview = () => {
+    const [reports, setReports] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [msg, setMsg] = useState('');
+    const [editRow, setEditRow] = useState(null); // report_id currently being edited
+    const [editForm, setEditForm] = useState({});
+
+    const load = useCallback(() => {
+        import('../services/api').then(({ getPlayerReportsForCoach }) => {
+            getPlayerReportsForCoach().then(r => { setReports(r.data.reports); setLoading(false); }).catch(() => setLoading(false));
+        });
+    }, []);
+    useEffect(() => { load(); }, [load]);
+
+    const handleAction = async (report_id, actionType) => {
+        setMsg('');
+        const { approvePlayerReport } = await import('../services/api');
+        try {
+            if (actionType === 'Reject') {
+                await approvePlayerReport(report_id, { status: 'Rejected' });
+                setMsg('❌ Report rejected and sent back to captain.');
+            } else if (actionType === 'Approve') {
+                let data = { status: 'Final Approved' };
+                if (editRow === report_id) {
+                    data = { ...editForm, status: 'Final Approved' };
+                } else {
+                    const existing = reports.find(r => r.report_id === report_id);
+                    data = { ...existing, status: 'Final Approved' };
+                }
+                await approvePlayerReport(report_id, data);
+                setMsg('✅ Final data approved and locked.');
+                setEditRow(null);
+            }
+            load();
+        } catch { alert('Action failed'); }
+    };
+
+    const startEdit = (r) => {
+        setEditRow(r.report_id);
+        setEditForm({ attendance: r.attendance, discipline: r.discipline, training_hours: r.training_hours, notes: r.notes || '' });
+    };
+
+    if (loading) return <Spinner />;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Player Attendance Review</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Coach can fix mistakes, approve final data, or reject.</p>
+            </div>
+            <Alert msg={msg} />
+
+            <div className="glass-table-container">
+                <table className="glass-table">
+                    <thead><tr><th>Player</th><th>Attendance</th><th>Discipline</th><th>Hours</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        {reports.map(r => {
+                            const isEditing = editRow === r.report_id;
+                            return (
+                                <tr key={r.report_id}>
+                                    <td style={{ fontWeight: 700 }}>{r.player_name}</td>
+                                    <td>
+                                        {isEditing ? (
+                                            <select className="glass-input" value={editForm.attendance} onChange={e => setEditForm({...editForm, attendance: e.target.value})} style={{ padding: '6px', fontSize: '0.8rem' }}>
+                                                <option value="Present">Present</option>
+                                                <option value="Absent">Absent</option>
+                                                <option value="Late">Late</option>
+                                                <option value="Training">Training</option>
+                                                <option value="Medical Leave">Medical Leave</option>
+                                            </select>
+                                        ) : (
+                                            <span style={{ 
+                                                color: r.attendance === 'Present' ? 'var(--accent-success)' : 
+                                                       r.attendance === 'Absent' ? 'var(--accent-danger)' : 
+                                                       r.attendance === 'Medical Leave' ? '#94a3b8' : 'var(--accent-warning)', 
+                                                fontWeight: 700 
+                                            }}>{r.attendance}</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {isEditing ? (
+                                            <select className="glass-input" value={editForm.discipline} onChange={e => setEditForm({...editForm, discipline: e.target.value})} style={{ padding: '6px', fontSize: '0.8rem' }}>
+                                                <option value="10">10 (Good)</option>
+                                                <option value="5">5 (Average)</option>
+                                                <option value="1">1 (Poor)</option>
+                                            </select>
+                                        ) : (
+                                            <span>{r.discipline}/10</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {isEditing ? (
+                                            <input type="number" step="0.5" min="0" className="glass-input" 
+                                                value={editForm.training_hours} 
+                                                onChange={e => {
+                                                    const v = parseFloat(e.target.value);
+                                                    setEditForm({...editForm, training_hours: isNaN(v) || v < 0 ? 0 : v});
+                                                }}
+                                                onKeyDown={e => {
+                                                    if (e.key === '-' || e.key === 'e') e.preventDefault();
+                                                }}
+                                                style={{ width: '60px', padding: '6px' }} />
+                                        ) : (
+                                            <span>{r.training_hours}h</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {r.status === 'Final Approved' ? (
+                                            <StatusBadge status={r.status} />
+                                        ) : (
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {isEditing ? (
+                                                    <button className="glass-button" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: '#94a3b8' }} onClick={() => setEditRow(null)}>CANCEL</button>
+                                                ) : (
+                                                    <button className="glass-button" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)' }} onClick={() => startEdit(r)}>EDIT</button>
+                                                )}
+                                                <button className="glass-button primary-btn" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => handleAction(r.report_id, 'Approve')}>APPROVE</button>
+                                                <button className="glass-button" style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--accent-danger)', borderColor: 'rgba(239,68,68,0.2)' }} onClick={() => handleAction(r.report_id, 'Reject')}>REJECT</button>
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {reports.length === 0 && (
+                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No reports to review.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
