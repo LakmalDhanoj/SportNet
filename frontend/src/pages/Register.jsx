@@ -16,10 +16,12 @@ const SPORT_POSITIONS = {
 };
 const DEFAULT_POSITIONS = ['Forward', 'Midfielder', 'Defender', 'Captain', 'Substitute'];
 
+const DOMAIN = '@stu.vau.ac.lk';
+
 const Register = () => {
+    const [emailPrefix, setEmailPrefix] = useState('');
     const [formData, setFormData] = useState({
         name: '',
-        email: '',
         password: '',
         gender: 'Male',
         age: '',
@@ -62,13 +64,7 @@ const Register = () => {
         setSuccess('');
         setLoading(true);
 
-        const email = formData.email.toLowerCase();
-        const isCampusEmail = email.endsWith('.edu') || email.endsWith('.ac.lk') || email.endsWith('.edu.lk') || email.endsWith('@sportnet.com');
-        if (!isCampusEmail) {
-            setError('Please use a valid campus email address (ending with .edu, .ac.lk, or .edu.lk).');
-            setLoading(false);
-            return;
-        }
+        const email = emailPrefix.trim() + DOMAIN;
 
         if (!formData.sport_category) {
             setError('Please select your sport category.');
@@ -77,7 +73,7 @@ const Register = () => {
         }
 
         try {
-            const response = await api.post('/auth/register', formData);
+            const response = await api.post('/auth/register', { ...formData, email });
             setSuccess(response.data.message);
             setTimeout(() => { navigate('/login'); }, 3000);
         } catch (err) {
@@ -127,9 +123,16 @@ const Register = () => {
                     {/* Email */}
                     <div>
                         <label style={labelStyle}>Campus Email</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} style={inputStyle} required placeholder="yourname@campus.edu" className="glass-input" />
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                            Must end with .edu, .ac.lk, or .edu.lk
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '0 16px', height: '52px' }}>
+                            <input
+                                type="text"
+                                value={emailPrefix}
+                                onChange={(e) => setEmailPrefix(e.target.value.replace(/@vau\.ac\.lk/gi, ''))}
+                                required
+                                placeholder="e.g. yourname"
+                                style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', height: '100%', padding: 0, fontSize: '0.95rem' }}
+                            />
+                            <span style={{ color: 'var(--accent-primary)', fontSize: '0.88rem', fontWeight: 700, whiteSpace: 'nowrap', userSelect: 'none', paddingLeft: '8px', borderLeft: '1px solid rgba(14,165,233,0.3)', marginLeft: '8px', height: '28px', display: 'flex', alignItems: 'center' }}>{DOMAIN}</span>
                         </div>
                     </div>
 

@@ -346,9 +346,8 @@ exports.coachAddPlayer = async (req, res) => {
         }
 
         const lowerEmail = email.toLowerCase();
-        const isCampusEmail = lowerEmail.endsWith('.edu') || lowerEmail.endsWith('.ac.lk') || lowerEmail.endsWith('.edu.lk') || lowerEmail.endsWith('@sportnet.com');
-        if (!isCampusEmail) {
-            return res.status(400).json({ message: 'Please use a valid campus email address (ending with .edu, .ac.lk, or .edu.lk).' });
+        if (!lowerEmail.endsWith('@stu.vau.ac.lk')) {
+            return res.status(400).json({ message: 'Player email must end with @stu.vau.ac.lk.' });
         }
         
         const passwordHash = await bcrypt.hash(password, 10);

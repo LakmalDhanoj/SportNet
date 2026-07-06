@@ -314,18 +314,18 @@ CREATE TABLE audit_logs (
 SET @pw = '$2b$10$DGBGW4IhiweWdbakrjNZWux9JBC9aqMqjuD1b8OqiC2OE6Zt15Z8a';
 
 -- ─── USERS ───────────────────────────────────────────────────────────────────
-INSERT INTO users (email, password_hash, role) VALUES ('director1@sportnet.com', @pw, 'director'); -- 1
-INSERT INTO users (email, password_hash, role) VALUES ('director2@sportnet.com', @pw, 'director'); -- 2
-INSERT INTO users (email, password_hash, role) VALUES ('manager@sportnet.com', @pw, 'manager'); -- 3
-INSERT INTO users (email, password_hash, role) VALUES ('coach1@sportnet.com', @pw, 'coach'); -- 4
-INSERT INTO users (email, password_hash, role) VALUES ('coach2@sportnet.com', @pw, 'coach'); -- 5
-INSERT INTO users (email, password_hash, role) VALUES ('captain1@sportnet.com', @pw, 'captain'); -- 6
-INSERT INTO users (email, password_hash, role) VALUES ('captain2@sportnet.com', @pw, 'captain'); -- 7
-INSERT INTO users (email, password_hash, role) VALUES ('player1@sportnet.com', @pw, 'player'); -- 8
-INSERT INTO users (email, password_hash, role) VALUES ('player2@sportnet.com', @pw, 'player'); -- 9
-INSERT INTO users (email, password_hash, role) VALUES ('player3@sportnet.com', @pw, 'player'); -- 10
-INSERT INTO users (email, password_hash, role) VALUES ('player4@sportnet.com', @pw, 'player'); -- 11
-INSERT INTO users (email, password_hash, role) VALUES ('player5@sportnet.com', @pw, 'player'); -- 12
+INSERT INTO users (email, password_hash, role) VALUES ('director1@vau.ac.lk', @pw, 'director'); -- 1
+INSERT INTO users (email, password_hash, role) VALUES ('director2@vau.ac.lk', @pw, 'director'); -- 2
+INSERT INTO users (email, password_hash, role) VALUES ('manager@vau.ac.lk', @pw, 'manager'); -- 3
+INSERT INTO users (email, password_hash, role) VALUES ('coach1@vau.ac.lk', @pw, 'coach'); -- 4
+INSERT INTO users (email, password_hash, role) VALUES ('coach2@vau.ac.lk', @pw, 'coach'); -- 5
+INSERT INTO users (email, password_hash, role) VALUES ('captain1@stu.vau.ac.lk', @pw, 'captain'); -- 6
+INSERT INTO users (email, password_hash, role) VALUES ('captain2@stu.vau.ac.lk', @pw, 'captain'); -- 7
+INSERT INTO users (email, password_hash, role) VALUES ('player1@stu.vau.ac.lk', @pw, 'player'); -- 8
+INSERT INTO users (email, password_hash, role) VALUES ('player2@stu.vau.ac.lk', @pw, 'player'); -- 9
+INSERT INTO users (email, password_hash, role) VALUES ('player3@stu.vau.ac.lk', @pw, 'player'); -- 10
+INSERT INTO users (email, password_hash, role) VALUES ('player4@stu.vau.ac.lk', @pw, 'player'); -- 11
+INSERT INTO users (email, password_hash, role) VALUES ('player5@stu.vau.ac.lk', @pw, 'player'); -- 12
 
 -- ─── PROFILES ─────────────────────────────────────────────────────────────────
 INSERT INTO sports_director (user_id, name, gender, age) VALUES (1, 'Rajapaksa Fernando', 'Male', 55);

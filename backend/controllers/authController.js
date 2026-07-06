@@ -2,6 +2,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
+// Domain enforced per role
+const ROLE_DOMAIN = {
+    director: '@vau.ac.lk',
+    manager:  '@vau.ac.lk',
+    coach:    '@vau.ac.lk',
+    captain:  '@stu.vau.ac.lk',
+    player:   '@stu.vau.ac.lk',
+};
+
 exports.registerPlayer = async (req, res) => {
     try {
         const { email, password, name, gender, age, sport_category, position } = req.body;
@@ -10,9 +19,9 @@ exports.registerPlayer = async (req, res) => {
         }
 
         const lowerEmail = email.toLowerCase();
-        const isCampusEmail = lowerEmail.endsWith('.edu') || lowerEmail.endsWith('.ac.lk') || lowerEmail.endsWith('.edu.lk') || lowerEmail.endsWith('@sportnet.com');
-        if (!isCampusEmail) {
-            return res.status(400).json({ message: 'Please use a valid campus email address (ending with .edu, .ac.lk, or .edu.lk).' });
+        // Players self-register → must use @stu.vau.ac.lk
+        if (!lowerEmail.endsWith('@stu.vau.ac.lk')) {
+            return res.status(400).json({ message: 'Student registration requires a @stu.vau.ac.lk email address.' });
         }
 
         const [existing] = await db.query('SELECT user_id FROM users WHERE email = ?', [email]);
@@ -54,11 +63,23 @@ exports.login = async (req, res) => {
         const [users] = await db.query('SELECT * FROM users WHERE email = ? AND role = ?', [email, role]);
 
         if (users.length === 0) {
-            return res.status(401).json({ message: 'Invalid credentials or role' });
+            // Give a domain-hint if the role is known
+            const expectedDomain = ROLE_DOMAIN[role];
+            const hintMsg = expectedDomain
+                ? `Invalid credentials. ${role.charAt(0).toUpperCase() + role.slice(1)} accounts must use ${expectedDomain} emails.`
+                : 'Invalid credentials or role';
+            return res.status(401).json({ message: hintMsg });
         }
 
         const user = users[0];
 
+        // Enforce domain per role
+        const expectedDomain = ROLE_DOMAIN[role];
+        if (expectedDomain && !user.email.toLowerCase().endsWith(expectedDomain)) {
+            return res.status(401).json({
+                message: `${role.charAt(0).toUpperCase() + role.slice(1)} accounts must use ${expectedDomain} email addresses.`
+            });
+        }
         if (role === 'player') {
             const [playerRows] = await db.query('SELECT approval_status FROM player WHERE user_id = ?', [user.user_id]);
             if (playerRows.length > 0) {

@@ -690,9 +690,9 @@ export const AddPlayerDirectly = () => {
         setLoading(true); setMsg(''); setErr('');
 
         const email = formData.email.toLowerCase();
-        const isCampusEmail = email.endsWith('.edu') || email.endsWith('.ac.lk') || email.endsWith('.edu.lk') || email.endsWith('@sportnet.com');
+        const isCampusEmail = email.endsWith('@stu.vau.ac.lk');
         if (!isCampusEmail) {
-            setErr('Please use a valid campus email address (ending with .edu, .ac.lk, or .edu.lk).');
+            setErr('Player email must end with @stu.vau.ac.lk.');
             setLoading(false);
             return;
         }
