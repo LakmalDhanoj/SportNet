@@ -203,10 +203,13 @@ exports.reviewPlayerRequest = async (req, res) => {
         );
 
         // Create player profile
+        const [sportRows] = await connection.query('SELECT sport_id FROM sports WHERE sport_name = ?', [request.sport_category]);
+        const sport_id = sportRows.length > 0 ? sportRows[0].sport_id : null;
+
         await connection.query(
-            `INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, sport_category, position, approval_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'Approved')`,
-            [userResult.insertId, request.captain_id, request.player_name, request.gender, request.age, request.sport_category, request.position]
+            `INSERT INTO player (user_id, managed_by_captain_id, coach_id, sport_id, name, gender, age, sport_category, position, approval_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
+            [userResult.insertId, request.captain_id, coach_id, sport_id, request.player_name, request.gender, request.age, request.sport_category, request.position]
         );
 
         // Mark request as Approved

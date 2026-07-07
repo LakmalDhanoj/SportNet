@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
     getAllUsers, createUser, deleteUser, getAllPlayers, getAllCaptains, 
     listCoaches, listCaptains, listDirectors, listManagers, getAuditLogs,
-    getAllSports, createSport, updateSport, deleteSport 
+    getAllSports, createSport, updateSport, deleteSport, getDirectorTeamTree 
 } from '../services/api';
 
 const Spinner = () => (
@@ -28,7 +28,7 @@ export const ManageUsers = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [form, setForm] = useState({ email: '', password: '', role: 'player', name: '', gender: 'Male', age: '', qualification: '', managed_by_id: '', sport_specialization: '' });
+    const [form, setForm] = useState({ email: '', password: '', role: 'manager', name: '', gender: 'Male', age: '', qualification: '', managed_by_id: '', sport_specialization: '', sport_id: '' });
     const [dropdowns, setDropdowns] = useState({ coaches: [], captains: [], directors: [], managers: [] });
     const [sports, setSports] = useState([]);
     const [msg, setMsg] = useState(''); const [err, setErr] = useState('');
@@ -53,7 +53,7 @@ export const ManageUsers = () => {
             await createUser(form);
             setMsg(`Identity established for ${form.email}`);
             setShowForm(false);
-            setForm({ email: '', password: '', role: 'player', name: '', gender: 'Male', age: '', qualification: '', managed_by_id: '', sport_specialization: '' });
+            setForm({ email: '', password: '', role: 'manager', name: '', gender: 'Male', age: '', qualification: '', managed_by_id: '', sport_specialization: '', sport_id: '' });
             load();
         } catch (ex) { setErr(ex.response?.data?.message || 'Identity creation failure'); }
     };
@@ -127,7 +127,7 @@ export const ManageUsers = () => {
                         <div className="form-group"><label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 700 }}>Initial Passkey</label><input type="password" className="glass-input" style={{ width: '100%' }} required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></div>
                         <div className="form-group"><label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 700 }}>Strategic Role</label>
                             <select className="glass-input" style={{ width: '100%' }} value={form.role} onChange={e => setForm({ ...form, role: e.target.value, managed_by_id: '' })}>
-                                {['director','manager','coach','captain','player'].map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
+                                {['director','manager','coach','captain'].map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                             </select>
                         </div>
                         <div className="form-group"><label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 700 }}>Biological Gender</label>
@@ -139,12 +139,19 @@ export const ManageUsers = () => {
                         {['manager','coach'].includes(form.role) && (
                             <div className="form-group"><label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 700 }}>Expertise / Qualification</label><input className="glass-input" style={{ width: '100%' }} value={form.qualification} onChange={e => setForm({ ...form, qualification: e.target.value })} /></div>
                         )}
-                        {form.role === 'manager' && (
+                        {['manager', 'coach', 'captain'].includes(form.role) && (
                             <div className="form-group">
-                                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 700 }}>Sport Specialization</label>
-                                <select className="glass-input" style={{ width: '100%' }} required value={form.sport_specialization} onChange={e => setForm({ ...form, sport_specialization: e.target.value })}>
+                                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 700 }}>Sport Assignment / Specialization</label>
+                                <select className="glass-input" style={{ width: '100%' }} required value={form.sport_id || ''} onChange={e => {
+                                    const selectedSport = sports.find(s => s.sport_id.toString() === e.target.value);
+                                    setForm({ 
+                                        ...form, 
+                                        sport_id: e.target.value,
+                                        sport_specialization: selectedSport ? selectedSport.sport_name : ''
+                                    });
+                                }}>
                                     <option value="">— Select Sport Domain —</option>
-                                    {sports.filter(s => s.status === 'Active').map(s => <option key={s.sport_id} value={s.sport_name}>{s.sport_name}</option>)}
+                                    {sports.filter(s => s.status === 'Active').map(s => <option key={s.sport_id} value={s.sport_id}>{s.sport_name}</option>)}
                                 </select>
                             </div>
                         )}
@@ -515,4 +522,146 @@ export const SystemSettings = () => (
         <button className="glass-button primary-btn" style={{ width: 'auto', marginTop: '40px', padding: '16px 48px' }}>PERSIST ALL MODIFICATIONS</button>
     </div>
 );
+
+export const DirectorTeamView = () => {
+    const [teamTree, setTeamTree] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [err, setErr] = useState('');
+
+    useEffect(() => {
+        getDirectorTeamTree()
+            .then(res => {
+                setTeamTree(res.data.teamTree || []);
+                setLoading(false);
+            })
+            .catch(ex => {
+                setErr('Failed to load team structure');
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return <Spinner />;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>Sports Management Hierarchy</h1>
+                <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Strategic organizational tree: Sport → Managers → Coaches → Captains → Players.
+                </p>
+            </div>
+
+            {err && <Alert msg={err} type="error" />}
+
+            {teamTree.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No sports defined. Go to Sports section to create one.
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                    {teamTree.map(s => (
+                        <div key={s.sport_id} className="glass-panel" style={{ padding: '32px', borderRadius: '24px', borderLeft: '5px solid var(--accent-primary)', background: 'var(--bg-surface)' }}>
+                            {/* Sport Banner */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-dim)', paddingBottom: '16px', marginBottom: '24px' }}>
+                                <div>
+                                    <h2 style={{ fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-main)', margin: 0 }}>🏆 {s.sport_name}</h2>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Type: {s.sport_type}</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-primary)' }}>
+                                        ACTIVE HIERARCHY
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Managers Section */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <h4 style={{ fontSize: '0.8rem', letterSpacing: '0.1em', color: 'var(--accent-secondary)', textTransform: 'uppercase', marginBottom: '12px', fontWeight: 800 }}>
+                                    💼 Assigned Managers
+                                </h4>
+                                {s.managers.length === 0 ? (
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No Manager assigned to this sport domain.</p>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                        {s.managers.map(m => (
+                                            <div key={m.manager_id} className="glass-card" style={{ padding: '16px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface-alt)', border: '1px solid var(--border-dim)' }}>
+                                                <div style={{ fontSize: '1.5rem' }}>👤</div>
+                                                <div>
+                                                    <div style={{ fontWeight: 800 }}>{m.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: MGR-{m.manager_id}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Coaches, Captains & Players Tree */}
+                            <div>
+                                <h4 style={{ fontSize: '0.8rem', letterSpacing: '0.1em', color: 'var(--accent-success)', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 800 }}>
+                                    📋 Coaching & Squad Tree
+                                </h4>
+                                {s.coaches.length === 0 ? (
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No Coaches assigned to this sport.</p>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                        {s.coaches.map(c => (
+                                            <div key={c.coach_id} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-dim)', borderRadius: '16px', padding: '20px' }}>
+                                                {/* Coach Row */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                                    <div>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-success)', marginRight: '8px' }}>COACH</span>
+                                                        <strong style={{ fontSize: '1.1rem' }}>{c.name}</strong>
+                                                    </div>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Squad Group: {c.team_group || 'Unassigned'}</span>
+                                                </div>
+
+                                                {/* Captains Under Coach */}
+                                                <div style={{ paddingLeft: '24px', borderLeft: '1px dashed var(--border-dim)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                    {c.captains.length === 0 ? (
+                                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No Captains under this coach.</p>
+                                                    ) : (
+                                                        c.captains.map(cap => (
+                                                            <div key={cap.captain_id} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
+                                                                {/* Captain Row */}
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                                    <div>
+                                                                        <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-primary)', marginRight: '8px' }}>CAPTAIN</span>
+                                                                        <strong style={{ fontSize: '0.95rem' }}>{cap.name}</strong>
+                                                                    </div>
+                                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Position: {cap.position || 'N/A'}</span>
+                                                                </div>
+
+                                                                {/* Players Under Captain */}
+                                                                <div style={{ paddingLeft: '20px', borderLeft: '1px dotted var(--border-dim)' }}>
+                                                                    {cap.players.length === 0 ? (
+                                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No approved players in this squad.</p>
+                                                                    ) : (
+                                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                                                                            {cap.players.map(p => (
+                                                                                <div key={p.player_id} style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border-dim)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.approval_status === 'Approved' ? 'var(--accent-success)' : 'var(--accent-warning)' }}></span>
+                                                                                    <span>{p.name}</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 

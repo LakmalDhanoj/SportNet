@@ -39,9 +39,15 @@ exports.registerPlayer = async (req, res) => {
                 [email, passwordHash, 'player']
             );
             
+            let sport_id = null;
+            if (sport_category) {
+                const [sportRows] = await connection.query('SELECT sport_id FROM sports WHERE sport_name = ?', [sport_category]);
+                if (sportRows.length > 0) sport_id = sportRows[0].sport_id;
+            }
+
             await connection.query(
-                'INSERT INTO player (user_id, name, gender, age, sport_category, position, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [userResult.insertId, name, gender || null, age || null, sport_category || null, position || null, 'Pending']
+                'INSERT INTO player (user_id, sport_id, name, gender, age, sport_category, position, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [userResult.insertId, sport_id, name, gender || null, age || null, sport_category || null, position || null, 'Pending']
             );
             await connection.commit();
             res.status(201).json({ message: 'Registration successful. Waiting for coach approval.' });

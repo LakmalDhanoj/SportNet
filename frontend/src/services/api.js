@@ -36,6 +36,9 @@ export const getPendingPlayers = () => api.get('/users/coach/pending-players');
 export const approvePlayer = (id, data) => api.put(`/users/coach/approve-player/${id}`, data);
 export const coachAddPlayer = (data) => api.post('/users/coach/add-player', data);
 export const getMyTeammates = () => api.get('/users/player/my-teammates');
+export const getDirectorTeamTree = () => api.get('/users/director/team-tree');
+export const getManagerSportView = () => api.get('/users/manager/my-sport');
+export const updatePlayerPerformance = (id, data) => api.put(`/users/coach/player-performance/${id}`, data);
 export const uploadProfilePhoto = (formData) => api.post('/users/profile-photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
 });

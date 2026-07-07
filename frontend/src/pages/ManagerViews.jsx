@@ -1,5 +1,5 @@
- import { useState, useEffect } from 'react';
- import { getManagerOverview } from '../services/api';
+import { useState, useEffect } from 'react';
+import { getManagerOverview, getManagerSportView } from '../services/api';
  
  const Spinner = () => (
      <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
@@ -322,3 +322,126 @@
      );
  };
  
+export const ManagerSportView = () => {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [err, setErr] = useState('');
+
+    useEffect(() => {
+        getManagerSportView()
+            .then(res => { setData(res.data); setLoading(false); })
+            .catch(() => { setErr('Failed to load sport overview'); setLoading(false); });
+    }, []);
+
+    if (loading) return <Spinner />;
+
+    return (
+        <div className="view-container fade-in">
+            <div className="view-header">
+                <h1>MY SPORT DOMAIN</h1>
+                <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                    View the coaches, captains, and players assigned to your sport.
+                </p>
+            </div>
+
+            {err && <div style={{ color: 'var(--accent-danger)', fontWeight: 700, marginBottom: '16px' }}>{err}</div>}
+
+            {data && data.sport ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                    {/* Sport Banner */}
+                    <div className="glass-panel" style={{ padding: '32px', borderRadius: '24px', borderLeft: '5px solid var(--accent-primary)' }}>
+                        <h2 style={{ fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', margin: 0, color: 'var(--text-main)' }}>
+                            🏆 {data.sport.sport_name}
+                        </h2>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Type: {data.sport.sport_type} | Sport ID: {data.sport.sport_id}</span>
+                    </div>
+
+                    {/* Coaches */}
+                    <div className="glass-panel" style={{ padding: '28px', borderRadius: '20px' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', color: 'var(--accent-success)' }}>
+                            🎯 Coaches ({data.coaches?.length || 0})
+                        </h3>
+                        {data.coaches?.length === 0 ? (
+                            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No coaches assigned.</p>
+                        ) : (
+                            <div className="glass-table-container">
+                                <table className="glass-table">
+                                    <thead><tr><th>NAME</th><th>TEAM GROUP</th><th>LEVEL</th></tr></thead>
+                                    <tbody>
+                                        {data.coaches.map(c => (
+                                            <tr key={c.coach_id}>
+                                                <td style={{ fontWeight: 800 }}>{c.name}</td>
+                                                <td>{c.team_group || '—'}</td>
+                                                <td><span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, background: 'rgba(16,185,129,0.1)', color: 'var(--accent-success)' }}>{c.coaching_level || 'N/A'}</span></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Captains */}
+                    <div className="glass-panel" style={{ padding: '28px', borderRadius: '20px' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', color: 'var(--accent-primary)' }}>
+                            🛡️ Captains ({data.captains?.length || 0})
+                        </h3>
+                        {data.captains?.length === 0 ? (
+                            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No captains assigned.</p>
+                        ) : (
+                            <div className="glass-table-container">
+                                <table className="glass-table">
+                                    <thead><tr><th>NAME</th><th>POSITION</th><th>TOTAL SCORE</th></tr></thead>
+                                    <tbody>
+                                        {data.captains.map(cap => (
+                                            <tr key={cap.captain_id}>
+                                                <td style={{ fontWeight: 800 }}>{cap.name}</td>
+                                                <td>{cap.position || '—'}</td>
+                                                <td><strong style={{ color: 'var(--accent-primary)' }}>{cap.total_score || 0}</strong></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Players */}
+                    <div className="glass-panel" style={{ padding: '28px', borderRadius: '20px' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', color: 'var(--accent-warning)' }}>
+                            👟 Players ({data.players?.length || 0})
+                        </h3>
+                        {data.players?.length === 0 ? (
+                            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No players in this sport.</p>
+                        ) : (
+                            <div className="glass-table-container">
+                                <table className="glass-table">
+                                    <thead><tr><th>NAME</th><th>POSITION</th><th>STATUS</th><th>SKILL</th></tr></thead>
+                                    <tbody>
+                                        {data.players.map(p => (
+                                            <tr key={p.player_id}>
+                                                <td style={{ fontWeight: 800 }}>{p.name}</td>
+                                                <td>{p.position || '—'}</td>
+                                                <td>
+                                                    <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800,
+                                                        background: p.approval_status === 'Approved' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                                                        color: p.approval_status === 'Approved' ? 'var(--accent-success)' : 'var(--accent-warning)'
+                                                    }}>{p.approval_status}</span>
+                                                </td>
+                                                <td>{p.skill_level || '—'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    {data?.message || 'No sport assigned to your profile.'}
+                </div>
+            )}
+        </div>
+    );
+};

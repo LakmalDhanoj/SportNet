@@ -23,6 +23,10 @@ exports.createUser = async (req, res) => {
             return res.status(400).json({ message: 'email, password, role, and name are required' });
         }
 
+        if (role === 'player') {
+            return res.status(403).json({ message: 'Players cannot be added by Directors directly. They must be added by a Coach.' });
+        }
+
         // Validate and lookup relationships before creating the user row to prevent orphans
         let director_id = null;
         if (req.user && req.user.role === 'director') {
@@ -38,31 +42,18 @@ exports.createUser = async (req, res) => {
             }
         }
 
-        let finalSportCategory = null;
+        let sport_id = req.body.sport_id || null;
+        let finalSportCategory = req.body.sport_category || null;
 
-        if (role === 'coach') {
-            if (managed_by_id) {
-                const [mgrRows] = await db.query('SELECT sport_specialization FROM sport_manager WHERE manager_id = ?', [managed_by_id]);
-                if (mgrRows.length === 0) {
-                    return res.status(400).json({ message: 'Assigned sports manager does not exist' });
-                }
-                finalSportCategory = mgrRows[0].sport_specialization;
+        if (sport_id) {
+            const [sportRows] = await db.query('SELECT sport_name FROM sports WHERE sport_id = ?', [sport_id]);
+            if (sportRows.length > 0) {
+                finalSportCategory = sportRows[0].sport_name;
             }
-        } else if (role === 'captain') {
-            if (managed_by_id) {
-                const [coachRows] = await db.query('SELECT sport_category FROM coach WHERE coach_id = ?', [managed_by_id]);
-                if (coachRows.length === 0) {
-                    return res.status(400).json({ message: 'Assigned coach does not exist' });
-                }
-                finalSportCategory = coachRows[0].sport_category;
-            }
-        } else if (role === 'player') {
-            if (managed_by_id) {
-                const [capRows] = await db.query('SELECT sport_category FROM captain WHERE captain_id = ?', [managed_by_id]);
-                if (capRows.length === 0) {
-                    return res.status(400).json({ message: 'Assigned captain does not exist' });
-                }
-                finalSportCategory = capRows[0].sport_category;
+        } else if (finalSportCategory) {
+            const [sportRows] = await db.query('SELECT sport_id FROM sports WHERE sport_name = ?', [finalSportCategory]);
+            if (sportRows.length > 0) {
+                sport_id = sportRows[0].sport_id;
             }
         }
 
@@ -78,31 +69,23 @@ exports.createUser = async (req, res) => {
                 await db.query('INSERT INTO sports_director (user_id, name, gender, age) VALUES (?, ?, ?, ?)', [user_id, name, gender, age]);
                 break;
             case 'manager': {
-                const { sport_specialization } = req.body;
                 await db.query(
                     'INSERT INTO sport_manager (user_id, director_id, name, gender, age, qualification, sport_specialization) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [user_id, director_id, name, gender, age, qualification, sport_specialization || null]
+                    [user_id, director_id, name, gender, age, qualification, finalSportCategory || null]
                 );
                 break;
             }
             case 'coach': {
                 await db.query(
-                    'INSERT INTO coach (user_id, manager_id, name, gender, age, qualification, sport_category) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age, qualification, finalSportCategory]
+                    'INSERT INTO coach (user_id, manager_id, director_id, sport_id, name, gender, age, qualification, sport_category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [user_id, managed_by_id || null, director_id, sport_id, name, gender, age, qualification, finalSportCategory]
                 );
                 break;
             }
             case 'captain': {
                 await db.query(
-                    'INSERT INTO captain (user_id, managed_by_coach_id, name, gender, age, sport_category) VALUES (?, ?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age, finalSportCategory]
-                );
-                break;
-            }
-            case 'player': {
-                await db.query(
-                    'INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, sport_category, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [user_id, managed_by_id || null, name, gender, age, finalSportCategory, 'Approved']
+                    'INSERT INTO captain (user_id, managed_by_coach_id, director_id, sport_id, name, gender, age, sport_category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    [user_id, managed_by_id || null, director_id, sport_id, name, gender, age, finalSportCategory]
                 );
                 break;
             }
@@ -316,7 +299,7 @@ exports.getPendingPlayers = async (req, res) => {
 
 exports.approvePlayer = async (req, res) => {
     try {
-        const { role } = req.user;
+        const { role, user_id } = req.user;
         if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
         
         const { id } = req.params;
@@ -324,9 +307,13 @@ exports.approvePlayer = async (req, res) => {
         
         if (!captain_id) return res.status(400).json({ message: 'Captain ID is required to approve a player' });
         
+        const [coachRows] = await db.query('SELECT coach_id, sport_id FROM coach WHERE user_id = ?', [user_id]);
+        if (!coachRows.length) return res.status(404).json({ message: 'Coach profile not found' });
+        const { coach_id, sport_id } = coachRows[0];
+
         await db.query(
-            "UPDATE player SET approval_status = 'Approved', managed_by_captain_id = ? WHERE player_id = ?",
-            [captain_id, id]
+            "UPDATE player SET approval_status = 'Approved', managed_by_captain_id = ?, coach_id = ?, sport_id = ? WHERE player_id = ?",
+            [captain_id, coach_id, sport_id, id]
         );
         res.json({ message: 'Player approved and assigned to captain' });
     } catch (error) {
@@ -337,7 +324,7 @@ exports.approvePlayer = async (req, res) => {
 
 exports.coachAddPlayer = async (req, res) => {
     try {
-        const { role } = req.user;
+        const { role, user_id } = req.user;
         if (role !== 'coach') return res.status(403).json({ message: 'Forbidden' });
         
         const { email, password, name, gender, age, captain_id } = req.body;
@@ -349,6 +336,10 @@ exports.coachAddPlayer = async (req, res) => {
         if (!lowerEmail.endsWith('@stu.vau.ac.lk')) {
             return res.status(400).json({ message: 'Player email must end with @stu.vau.ac.lk.' });
         }
+
+        const [coachRows] = await db.query('SELECT coach_id, sport_id, sport_category FROM coach WHERE user_id = ?', [user_id]);
+        if (!coachRows.length) return res.status(404).json({ message: 'Coach profile not found' });
+        const { coach_id, sport_id, sport_category } = coachRows[0];
         
         const passwordHash = await bcrypt.hash(password, 10);
         
@@ -361,8 +352,8 @@ exports.coachAddPlayer = async (req, res) => {
             );
             
             await connection.query(
-                "INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, approval_status) VALUES (?, ?, ?, ?, ?, 'Approved')",
-                [userResult.insertId, captain_id, name, gender || null, age || null]
+                "INSERT INTO player (user_id, managed_by_captain_id, coach_id, sport_id, name, gender, age, sport_category, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Approved')",
+                [userResult.insertId, captain_id, coach_id, sport_id, name, gender || null, age || null, sport_category]
             );
             await connection.commit();
             res.status(201).json({ message: 'Player added successfully' });
@@ -433,3 +424,151 @@ exports.uploadProfilePhoto = async (req, res) => {
         res.status(500).json({ message: 'Server error uploading profile photo.' });
     }
 };
+
+exports.getDirectorTeamView = async (req, res) => {
+    try {
+        const { role } = req.user;
+        if (role !== 'director') return res.status(403).json({ message: 'Forbidden' });
+
+        const [sports] = await db.query('SELECT sport_id, sport_name, sport_type FROM sports');
+        const [managers] = await db.query('SELECT manager_id, name, sport_specialization FROM sport_manager');
+        const [coaches] = await db.query('SELECT coach_id, name, sport_id, manager_id FROM coach');
+        const [captains] = await db.query('SELECT captain_id, name, sport_id, managed_by_coach_id FROM captain');
+        const [players] = await db.query('SELECT player_id, name, sport_id, managed_by_captain_id, coach_id, approval_status FROM player');
+
+        const teamTree = sports.map(s => {
+            const sportManagers = managers.filter(m => m.sport_specialization === s.sport_name);
+            const sportCoaches = coaches.filter(c => c.sport_id === s.sport_id);
+            const sportCaptains = captains.filter(c => c.sport_id === s.sport_id);
+            const sportPlayers = players.filter(p => p.sport_id === s.sport_id);
+
+            return {
+                sport_id: s.sport_id,
+                sport_name: s.sport_name,
+                sport_type: s.sport_type,
+                managers: sportManagers,
+                coaches: sportCoaches.map(c => {
+                    const coachesCaptains = sportCaptains.filter(cap => cap.managed_by_coach_id === c.coach_id);
+                    return {
+                        ...c,
+                        captains: coachesCaptains.map(cap => {
+                            const captainsPlayers = sportPlayers.filter(p => p.managed_by_captain_id === cap.captain_id);
+                            return {
+                                ...cap,
+                                players: captainsPlayers
+                            };
+                        })
+                    };
+                })
+            };
+        });
+
+        res.json({ teamTree });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error retrieving team structure.' });
+    }
+};
+
+exports.getManagerSportView = async (req, res) => {
+    try {
+        const { role, user_id } = req.user;
+        if (role !== 'manager') return res.status(403).json({ message: 'Forbidden' });
+
+        const [mgrRows] = await db.query('SELECT manager_id, sport_specialization FROM sport_manager WHERE user_id = ?', [user_id]);
+        if (!mgrRows.length) return res.status(404).json({ message: 'Manager profile not found' });
+        const { sport_specialization } = mgrRows[0];
+
+        // Find sport info
+        const [sportRows] = await db.query('SELECT sport_id, sport_name, sport_type FROM sports WHERE sport_name = ?', [sport_specialization]);
+        if (!sportRows.length) return res.json({ message: 'No sport category matches manager specialization', coaches: [], captains: [], players: [] });
+        const sport_id = sportRows[0].sport_id;
+
+        const [coaches] = await db.query('SELECT coach_id, name, team_group, coaching_level FROM coach WHERE sport_id = ?', [sport_id]);
+        const [captains] = await db.query('SELECT captain_id, name, position, total_score FROM captain WHERE sport_id = ?', [sport_id]);
+        const [players] = await db.query('SELECT player_id, name, position, approval_status, skill_level FROM player WHERE sport_id = ?', [sport_id]);
+
+        res.json({
+            sport: sportRows[0],
+            coaches,
+            captains,
+            players
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error retrieving manager sport view.' });
+    }
+};
+
+exports.updatePlayerPerformance = async (req, res) => {
+    try {
+        const { role, user_id } = req.user;
+        if (role !== 'coach') return res.status(403).json({ message: 'Forbidden: Only coaches can evaluate players.' });
+
+        const { player_id } = req.params;
+        const {
+            performance_rating,
+            skill_level,
+            fitness_level,
+            injury_status,
+            availability,
+            bonus_points,
+            penalty_points,
+            coach_eval_sc,
+            achievements,
+            remarks
+        } = req.body;
+
+        const [coachRows] = await db.query('SELECT coach_id FROM coach WHERE user_id = ?', [user_id]);
+        if (!coachRows.length) return res.status(404).json({ message: 'Coach profile not found' });
+        const coach_id = coachRows[0].coach_id;
+
+        // Verify this player belongs to this coach
+        const [playerRows] = await db.query('SELECT player_id FROM player WHERE player_id = ? AND coach_id = ?', [player_id, coach_id]);
+        if (!playerRows.length) {
+            return res.status(403).json({ message: 'Not authorized to evaluate this player.' });
+        }
+
+        const rating = Number(performance_rating) || 0;
+        const evalScore = Number(coach_eval_sc) || 0;
+        const bonus = Number(bonus_points) || 0;
+        const penalty = Number(penalty_points) || 0;
+        const total_score = Math.max(0, Math.min(100, (rating * 4) + (evalScore * 6) + bonus - penalty));
+
+        await db.query(
+            `UPDATE player SET 
+                performance_rating = ?,
+                skill_level = ?,
+                fitness_level = ?,
+                injury_status = ?,
+                availability = ?,
+                bonus_points = ?,
+                penalty_points = ?,
+                coach_eval_sc = ?,
+                total_score = ?,
+                achievements = ?,
+                remarks = ?
+             WHERE player_id = ?`,
+            [
+                rating,
+                skill_level || 'Medium',
+                fitness_level || 'Medium',
+                injury_status || 'Fit',
+                availability || 'Available',
+                bonus,
+                penalty,
+                evalScore,
+                total_score,
+                achievements || '',
+                remarks || '',
+                player_id
+            ]
+        );
+
+        res.json({ message: 'Player performance record updated successfully.', total_score });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error updating player performance.' });
+    }
+};
+

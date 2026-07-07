@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 
-// ── Member module imports (members fill their own files and update these imports)
-// import { ManageUsers, ManageSports, AllPerformance, ApprovalsOverview, SystemSettings } from './AdminViews';
-// import { LeadershipManagement, PlayerReview, CoachProfileOverview, CaptainAttendanceEntry, PendingApprovals, PendingPlayersReview, AddPlayerDirectly, CoachPlayerRequestsReview, CoachCommentsView } from './CoachViews';
-// import { PlayerEntry, SubmissionStatus, CaptainProfileOverview, SquadList, CaptainPlayerRequests, CaptainCommentsView } from './CaptainViews';
-// import { PerformanceOverview, AttendanceHistory, DisciplineSummary, WeeklyProgressReport, MyTeammates, PlayerProfileView } from './PlayerViews';
-// import { ResourceAllocation, PersonnelMonitoring, EventCoordinator, ManagerProfileOverview } from './ManagerViews';
+// ── Member module imports
+import { ManageUsers, ManageSports, AllPerformance, ApprovalsOverview, SystemSettings, DirectorTeamView } from './AdminViews';
+import { LeadershipManagement, PlayerReview, CoachProfileOverview, CaptainAttendanceEntry, PendingApprovals, PendingPlayersReview, AddPlayerDirectly, CoachPlayerRequestsReview, CoachCommentsView } from './CoachViews';
+import { PlayerEntry, SubmissionStatus, CaptainProfileOverview, SquadList, CaptainPlayerRequests, CaptainCommentsView } from './CaptainViews';
+import { PerformanceOverview, AttendanceHistory, DisciplineSummary, WeeklyProgressReport, MyTeammates, PlayerProfileView } from './PlayerViews';
+import { ResourceAllocation, PersonnelMonitoring, EventCoordinator, ManagerProfileOverview, ManagerSportView } from './ManagerViews';
 
-// Temporary placeholder — replaced once members push their components
+// Temporary placeholder
 const ComingSoon = ({ label }) => (
     <div style={{ padding: '60px 40px', textAlign: 'center', background: 'var(--bg-surface)', borderRadius: '24px', border: '1px dashed var(--border-dim)' }}>
         <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔧</div>
@@ -16,38 +16,6 @@ const ComingSoon = ({ label }) => (
         <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>This section is being built by the assigned team member.</p>
     </div>
 );
-
-// ── Aliases so route elements below keep the same component names ──
-const ManageUsers            = () => <ComingSoon label="👥 User Management" />;
-const ManageSports           = () => <ComingSoon label="🏆 Sport Management" />;
-const AllPerformance         = () => <ComingSoon label="📈 Performance Overview" />;
-const ApprovalsOverview      = () => <ComingSoon label="✅ Audit / Approvals" />;
-const SystemSettings         = () => <ComingSoon label="⚙️ System Settings" />;
-const LeadershipManagement   = () => <ComingSoon label="👤 Captain Management" />;
-const PlayerReview           = () => <ComingSoon label="👥 Squad Review" />;
-const CoachProfileOverview   = () => <ComingSoon label="📊 Coach Overview" />;
-const CaptainAttendanceEntry = () => <ComingSoon label="📥 Captain Attendance Entry" />;
-const PendingApprovals       = () => <ComingSoon label="⚠️ Pending Approvals" />;
-const PendingPlayersReview   = () => <ComingSoon label="⏳ Pending Players" />;
-const AddPlayerDirectly      = () => <ComingSoon label="➕ Add Player" />;
-const CoachPlayerRequestsReview = () => <ComingSoon label="📋 Player Requests" />;
-const CoachCommentsView      = () => <ComingSoon label="💬 Comments (Coach)" />;
-const PlayerEntry            = () => <ComingSoon label="📝 Daily Attendance Entry" />;
-const SubmissionStatus       = () => <ComingSoon label="📤 Submission Status" />;
-const CaptainProfileOverview = () => <ComingSoon label="📊 Captain Overview" />;
-const SquadList              = () => <ComingSoon label="👥 My Squad" />;
-const CaptainPlayerRequests  = () => <ComingSoon label="➕ Request Player" />;
-const CaptainCommentsView    = () => <ComingSoon label="💬 Comments (Captain)" />;
-const PerformanceOverview    = () => <ComingSoon label="📊 Performance Overview" />;
-const AttendanceHistory      = () => <ComingSoon label="📅 Attendance History" />;
-const DisciplineSummary      = () => <ComingSoon label="⚖️ Discipline Summary" />;
-const WeeklyProgressReport   = () => <ComingSoon label="📈 Weekly Progress" />;
-const MyTeammates            = () => <ComingSoon label="👥 My Teammates" />;
-const PlayerProfileView      = () => <ComingSoon label="👤 My Profile" />;
-const ResourceAllocation     = () => <ComingSoon label="💰 Resource Allocation" />;
-const PersonnelMonitoring    = () => <ComingSoon label="👥 Personnel Monitoring" />;
-const EventCoordinator       = () => <ComingSoon label="📅 Events" />;
-const ManagerProfileOverview = () => <ComingSoon label="📊 Manager Overview" />;
 
 // ─── Role-specific welcome home ────────────────────────────────────────────────
 const HomeContent = ({ user }) => {
@@ -229,13 +197,14 @@ const Sidebar = ({ user, location, onLogout }) => {
             case 'director': return (<>
                 <NavItem to="/users"       icon="👤" label="Users"          location={location} />
                 <NavItem to="/sports"      icon="🏆" label="Sports"         location={location} />
+                <NavItem to="/my-team"     icon="👥" label="My Team"        location={location} />
                 <NavItem to="/performance" icon="📊" label="Global Metrics" location={location} />
                 <NavItem to="/approvals"   icon="✅" label="Approvals"      location={location} />
                 <NavItem to="/settings"    icon="⚙️" label="System"         location={location} />
             </>);
             case 'manager': return (<>
                 <NavItem to="/overview"             icon="📊" label="Dashboard" location={location} />
-                <NavItem to="/resource-allocation"  icon="💰" label="Budget"    location={location} />
+                <NavItem to="/my-sport"             icon="🏆" label="My Sport"  location={location} />
                 <NavItem to="/personnel-monitoring" icon="👥" label="Staff"     location={location} />
                 <NavItem to="/event-coordinator"    icon="📅" label="Events"    location={location} />
             </>);
@@ -357,6 +326,7 @@ const Dashboard = () => {
                     {/* Director */}
                     <Route path="/users"       element={<ManageUsers />} />
                     <Route path="/sports"      element={<ManageSports />} />
+                    <Route path="/my-team"     element={<DirectorTeamView />} />
                     <Route path="/performance" element={user.role === 'director' ? <AllPerformance /> : <PerformanceOverview />} />
                     <Route path="/approvals"   element={<ApprovalsOverview />} />
                     <Route path="/settings"    element={<SystemSettings />} />
@@ -370,6 +340,7 @@ const Dashboard = () => {
                     } />
 
                     {/* Manager */}
+                    <Route path="/my-sport"             element={<ManagerSportView />} />
                     <Route path="/resource-allocation"  element={<ResourceAllocation />} />
                     <Route path="/personnel-monitoring" element={<PersonnelMonitoring />} />
                     <Route path="/event-coordinator"    element={<EventCoordinator />} />

@@ -24,4 +24,28 @@ const directorOnly = (req, res, next) => {
     }
 };
 
-module.exports = { protect, directorOnly };
+const managerOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'manager') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Manager access required' });
+    }
+};
+
+const coachOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'coach') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Coach access required' });
+    }
+};
+
+const captainOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'captain') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Captain access required' });
+    }
+};
+
+module.exports = { protect, directorOnly, managerOnly, coachOnly, captainOnly };

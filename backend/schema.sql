@@ -80,6 +80,8 @@ CREATE TABLE coach (
     coach_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     manager_id INT,
+    director_id INT,
+    sport_id INT,
     name VARCHAR(255) NOT NULL,
     gender ENUM('Male', 'Female', 'Other'),
     age INT,
@@ -112,13 +114,17 @@ CREATE TABLE coach (
     remarks TEXT,
     specializations TEXT,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (manager_id) REFERENCES sport_manager(manager_id) ON DELETE SET NULL
+    FOREIGN KEY (manager_id) REFERENCES sport_manager(manager_id) ON DELETE SET NULL,
+    FOREIGN KEY (director_id) REFERENCES sports_director(director_id) ON DELETE SET NULL,
+    FOREIGN KEY (sport_id) REFERENCES sports(sport_id) ON DELETE SET NULL
 );
 
 CREATE TABLE captain (
     captain_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     managed_by_coach_id INT,
+    director_id INT,
+    sport_id INT,
     name VARCHAR(255) NOT NULL,
     gender ENUM('Male', 'Female', 'Other'),
     age INT,
@@ -150,13 +156,17 @@ CREATE TABLE captain (
     achievements TEXT,
     remarks TEXT,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (managed_by_coach_id) REFERENCES coach(coach_id) ON DELETE SET NULL
+    FOREIGN KEY (managed_by_coach_id) REFERENCES coach(coach_id) ON DELETE SET NULL,
+    FOREIGN KEY (director_id) REFERENCES sports_director(director_id) ON DELETE SET NULL,
+    FOREIGN KEY (sport_id) REFERENCES sports(sport_id) ON DELETE SET NULL
 );
 
 CREATE TABLE player (
     player_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     managed_by_captain_id INT,
+    coach_id INT,
+    sport_id INT,
     approval_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
     name VARCHAR(255) NOT NULL,
     gender ENUM('Male', 'Female', 'Other'),
@@ -187,7 +197,9 @@ CREATE TABLE player (
     remarks TEXT,
     profile_photo VARCHAR(255) DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (managed_by_captain_id) REFERENCES captain(captain_id) ON DELETE SET NULL
+    FOREIGN KEY (managed_by_captain_id) REFERENCES captain(captain_id) ON DELETE SET NULL,
+    FOREIGN KEY (coach_id) REFERENCES coach(coach_id) ON DELETE SET NULL,
+    FOREIGN KEY (sport_id) REFERENCES sports(sport_id) ON DELETE SET NULL
 );
 
 -- ─── GAME TABLE ───────────────────────────────────────────────────────────────
@@ -327,6 +339,13 @@ INSERT INTO users (email, password_hash, role) VALUES ('player3@stu.vau.ac.lk', 
 INSERT INTO users (email, password_hash, role) VALUES ('player4@stu.vau.ac.lk', @pw, 'player'); -- 11
 INSERT INTO users (email, password_hash, role) VALUES ('player5@stu.vau.ac.lk', @pw, 'player'); -- 12
 
+-- ─── SEED SPORTS ──────────────────────────────────────────────────────────────
+INSERT INTO sports (sport_name, sport_type, metrics, description, status) VALUES
+('Cricket', 'Team', 'Batting Avg, Strike Rate', 'Standard cricket sport category with batting and bowling tracking.', 'Active'),
+('Football', 'Team', 'Goals, Assists', 'Association football sport category tracking goal scores and assists.', 'Active'),
+('Volleyball', 'Team', 'Blocks, Serves', 'Volleyball sport category tracking blocks and serves metrics.', 'Active'),
+('Athletics', 'Individual', 'Speed, Distance', 'Track and field athletics tracking speed and distance.', 'Active');
+
 -- ─── PROFILES ─────────────────────────────────────────────────────────────────
 INSERT INTO sports_director (user_id, name, gender, age) VALUES (1, 'Rajapaksa Fernando', 'Male', 55);
 INSERT INTO sports_director (user_id, name, gender, age) VALUES (2, 'Priya Jayasuriya', 'Female', 48);
@@ -334,33 +353,26 @@ INSERT INTO sports_director (user_id, name, gender, age) VALUES (2, 'Priya Jayas
 INSERT INTO sport_manager (user_id, director_id, name, gender, age, qualification) 
 VALUES (3, 1, 'Chamara Silva', 'Male', 42, 'MBA Sports Management');
 
-INSERT INTO coach (user_id, manager_id, name, gender, age, team_group, qualification, coaching_level, specializations, attendance, discipline, overall_perf_score)
-VALUES (4, 1, 'Mike Perera', 'Male', 38, 'Alpha Squad', 'B.Sc. Sports Science', 'Professional', 'Strategy', 92.5, 9, 87.5);
+INSERT INTO coach (user_id, manager_id, director_id, sport_id, name, gender, age, team_group, qualification, coaching_level, sport_category, specializations, attendance, discipline, overall_perf_score)
+VALUES (4, 1, 1, 2, 'Mike Perera', 'Male', 38, 'Alpha Squad', 'B.Sc. Sports Science', 'Professional', 'Football', 'Strategy', 92.5, 9, 87.5);
 
-INSERT INTO coach (user_id, manager_id, name, gender, age, team_group, qualification, coaching_level, specializations, attendance, discipline, overall_perf_score)
-VALUES (5, 1, 'Sarah Silva', 'Female', 35, 'Beta Squad', 'M.Sc. Physical Education', 'Professional', 'Fitness', 95.0, 10, 91.0);
+INSERT INTO coach (user_id, manager_id, director_id, sport_id, name, gender, age, team_group, qualification, coaching_level, sport_category, specializations, attendance, discipline, overall_perf_score)
+VALUES (5, 1, 1, 1, 'Sarah Silva', 'Female', 35, 'Beta Squad', 'M.Sc. Physical Education', 'Professional', 'Cricket', 'Fitness', 95.0, 10, 91.0);
 
-INSERT INTO captain (user_id, managed_by_coach_id, name, gender, age, position, leadership_rt, motivation_lvl, strategy_rt, total_score)
-VALUES (6, 1, 'Kasun Jayawardena', 'Male', 24, 'Forward', 8.5, 9.0, 7.5, 72.50);
+INSERT INTO captain (user_id, managed_by_coach_id, director_id, sport_id, name, gender, age, sport_category, position, leadership_rt, motivation_lvl, strategy_rt, total_score)
+VALUES (6, 1, 1, 2, 'Kasun Jayawardena', 'Male', 24, 'Football', 'Forward', 8.5, 9.0, 7.5, 72.50);
 
-INSERT INTO captain (user_id, managed_by_coach_id, name, gender, age, position, leadership_rt, motivation_lvl, strategy_rt, total_score)
-VALUES (7, 2, 'Samanthi Perera', 'Female', 22, 'Defender', 9.0, 8.5, 8.0, 80.00);
+INSERT INTO captain (user_id, managed_by_coach_id, director_id, sport_id, name, gender, age, sport_category, position, leadership_rt, motivation_lvl, strategy_rt, total_score)
+VALUES (7, 2, 1, 1, 'Samanthi Perera', 'Female', 22, 'Cricket', 'Defender', 9.0, 8.5, 8.0, 80.00);
 
-INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, position, skill_level, discipline, total_score)
-VALUES (8, 1, 'Nimal Rathnayake', 'Male', 20, 'Midfielder', 'Advanced', 8, 75.00);
+INSERT INTO player (user_id, managed_by_captain_id, coach_id, sport_id, name, gender, age, sport_category, position, skill_level, discipline, total_score, approval_status)
+VALUES (8, 1, 1, 2, 'Nimal Rathnayake', 'Male', 20, 'Football', 'Midfielder', 'Advanced', 8, 75.00, 'Approved');
 
-INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, position, skill_level, discipline, total_score)
-VALUES (9, 1, 'Kasun Bandara', 'Male', 21, 'Striker', 'Intermediate', 6, 60.00);
+INSERT INTO player (user_id, managed_by_captain_id, coach_id, sport_id, name, gender, age, sport_category, position, skill_level, discipline, total_score, approval_status)
+VALUES (9, 1, 1, 2, 'Kasun Bandara', 'Male', 21, 'Football', 'Striker', 'Intermediate', 6, 60.00, 'Approved');
 
-INSERT INTO player (user_id, managed_by_captain_id, name, gender, age, position, skill_level, discipline, total_score)
-VALUES (10, 1, 'Amal Dissanayake', 'Male', 19, 'Goalkeeper', 'Beginner', 7, 55.00);
-
--- ─── SEED SPORTS ──────────────────────────────────────────────────────────────
-INSERT INTO sports (sport_name, sport_type, metrics, description, status) VALUES
-('Cricket', 'Team', 'Batting Avg, Strike Rate', 'Standard cricket sport category with batting and bowling tracking.', 'Active'),
-('Football', 'Team', 'Goals, Assists', 'Association football sport category tracking goal scores and assists.', 'Active'),
-('Volleyball', 'Team', 'Blocks, Serves', 'Volleyball sport category tracking blocks and serves metrics.', 'Active'),
-('Athletics', 'Individual', 'Speed, Distance', 'Track and field athletics tracking speed and distance.', 'Active');
+INSERT INTO player (user_id, managed_by_captain_id, coach_id, sport_id, name, gender, age, sport_category, position, skill_level, discipline, total_score, approval_status)
+VALUES (10, 1, 1, 2, 'Amal Dissanayake', 'Male', 19, 'Football', 'Goalkeeper', 'Beginner', 7, 55.00, 'Approved');
 
 -- ─── REPORTS ──────────────────────────────────────────────────────────────────
 INSERT INTO player_reports (player_id, captain_id, date, attendance, discipline, training_hours, status) VALUES

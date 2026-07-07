@@ -43,6 +43,8 @@ router.get('/', protect, directorOnly, uc.getAllUsers);
 router.post('/', protect, directorOnly, uc.createUser);
 router.delete('/:user_id', protect, directorOnly, uc.deleteUser);
 router.get('/audit-logs', protect, directorOnly, uc.getAuditLogs);
+router.get('/director/team-tree', protect, directorOnly, uc.getDirectorTeamView);
+router.get('/manager/my-sport', protect, uc.getManagerSportView);
 
 
 // ── Role-specific list endpoints ──────────────────────────────────────────────
@@ -56,6 +58,7 @@ router.get('/all-players', protect, uc.getAllPlayers);
 router.get('/coach/pending-players', protect, uc.getPendingPlayers);
 router.put('/coach/approve-player/:id', protect, uc.approvePlayer);
 router.post('/coach/add-player', protect, uc.coachAddPlayer);
+router.put('/coach/player-performance/:player_id', protect, uc.updatePlayerPerformance);
 router.get('/player/my-teammates', protect, uc.getMyTeammates);
 
 // ── Dropdown lists ────────────────────────────────────────────────────────────
